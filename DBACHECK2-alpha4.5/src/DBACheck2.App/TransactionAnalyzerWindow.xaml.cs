@@ -8,104 +8,18 @@ namespace DBACheck2.App;
 public partial class TransactionAnalyzerWindow : Window
 {
     private readonly SqlHealthService _service;
+    private readonly SqlCompatibilityCollectorService _compat;
     private TransactionIncident? _evidenceFor;
 
-    public TransactionAnalyzerWindow(SqlHealthService service)
-    {
-        InitializeComponent(); _service=service; Loaded += async (_,__) => await LoadAsync();
-    }
-
-    private async Task LoadAsync()
-    {
-        try
-        {
-            RefreshButton.IsEnabled=false; AnalyzerStatus.Text="Consultando...";
-            var data=await _service.GetLongTransactionsAsync(30);
-            TransactionGrid.ItemsSource=data;
-            AnalyzerStatus.Text=$"{data.Count} transacción(es) >= 30 min";
-        }
-        catch(Exception ex) { AnalyzerStatus.Text="ERROR: "+ex.Message; }
-        finally { RefreshButton.IsEnabled=true; }
-    }
-
+    public TransactionAnalyzerWindow(SqlHealthService service,SqlCompatibilityCollectorService compat){InitializeComponent();_service=service;_compat=compat;Loaded+=async(_,__)=>await LoadAsync();}
+    private async Task LoadAsync(){try{RefreshButton.IsEnabled=false;AnalyzerStatus.Text="Consultando...";var data=await _compat.GetLongTransactionsAsync(30);TransactionGrid.ItemsSource=data;var caps=await _compat.DetectAsync();AnalyzerStatus.Text=$"{data.Count} transacción(es) >= 30 min | {caps.VersionLabel} | {caps.Profile.ToString().ToUpperInvariant()}";}catch(Exception ex){AnalyzerStatus.Text="ERROR: "+ex.Message;}finally{RefreshButton.IsEnabled=true;}}
     private async void RefreshButton_Click(object sender,RoutedEventArgs e)=>await LoadAsync();
-
-    private void TransactionGrid_SelectionChanged(object sender,SelectionChangedEventArgs e)
-    {
-        _evidenceFor=null;
-        KillButton.IsEnabled=false;
-        DiagnosticButton.IsEnabled=TransactionGrid.SelectedItem is TransactionIncident;
-        SqlButton.IsEnabled=TransactionGrid.SelectedItem is TransactionIncident;
-        LocksButton.IsEnabled=TransactionGrid.SelectedItem is TransactionIncident;
-        TransactionButton.IsEnabled=TransactionGrid.SelectedItem is TransactionIncident;
-        EvidenceButton.IsEnabled=TransactionGrid.SelectedItem is TransactionIncident;
-        StatusOnlyButton.IsEnabled=TransactionGrid.SelectedItem is TransactionIncident;
-        if(TransactionGrid.SelectedItem is TransactionIncident x)
-            EvidenceText.Text=SqlHealthService.BuildEvidenceSnapshot(x)+"\n\nCapture evidence to enable protected KILL.";
-        else EvidenceText.Text="Selecciona una transacción para investigar.";
-    }
-
-    private void EvidenceButton_Click(object sender,RoutedEventArgs e)
-    {
-        if(TransactionGrid.SelectedItem is not TransactionIncident x) return;
-        var snapshot=SqlHealthService.BuildEvidenceSnapshot(x);
-        EvidenceText.Text=snapshot; Clipboard.SetText(snapshot); _evidenceFor=x; KillButton.IsEnabled=true;
-        AnalyzerStatus.Text=$"Evidence Snapshot SPID {x.SessionId} capturado. KILL protegido habilitado para esta selección.";
-    }
-
-    private async void DiagnosticButton_Click(object sender,RoutedEventArgs e)
-    {
-        if(TransactionGrid.SelectedItem is not TransactionIncident x) return;
-        try { AnalyzerStatus.Text=$"Diagnosticando SPID {x.SessionId}..."; EvidenceText.Text=await _service.GetTransactionDiagnosticsAsync(x); AnalyzerStatus.Text=$"Diagnóstico SPID {x.SessionId} finalizado."; }
-        catch(Exception ex) { AnalyzerStatus.Text="ERROR diagnóstico: "+ex.Message; }
-    }
-
-    private void SqlButton_Click(object sender, RoutedEventArgs e)
-    {
-        if(TransactionGrid.SelectedItem is not TransactionIncident x) return;
-        EvidenceText.Text=SqlHealthService.GetTransactionSql(x);
-        AnalyzerStatus.Text=$"SQL/input buffer SPID {x.SessionId}.";
-    }
-
-    private async void LocksButton_Click(object sender, RoutedEventArgs e)
-    {
-        if(TransactionGrid.SelectedItem is not TransactionIncident x) return;
-        try { AnalyzerStatus.Text=$"Consultando locks SPID {x.SessionId}..."; EvidenceText.Text=await _service.GetTransactionLocksAsync(x); AnalyzerStatus.Text=$"Locks SPID {x.SessionId} finalizado."; }
-        catch(Exception ex) { AnalyzerStatus.Text="ERROR locks: "+ex.Message; }
-    }
-
-    private void TransactionButton_Click(object sender, RoutedEventArgs e)
-    {
-        if(TransactionGrid.SelectedItem is not TransactionIncident x) return;
-        EvidenceText.Text=SqlHealthService.GetTransactionDetail(x);
-        AnalyzerStatus.Text=$"Detalle de transacción SPID {x.SessionId}.";
-    }
-
-    private async void KillButton_Click(object sender,RoutedEventArgs e)
-    {
-        if(TransactionGrid.SelectedItem is not TransactionIncident x || _evidenceFor != x) return;
-        try
-        {
-            KillButton.IsEnabled=false;
-            var identity=await _service.VerifyTransactionIdentityAsync(x);
-            if(!identity.SameSession) { MessageBox.Show(identity.Message,"DBACHECK 2 - Safety check",MessageBoxButton.OK,MessageBoxImage.Warning); AnalyzerStatus.Text=identity.Message; return; }
-            var confirm=MessageBox.Show(
-                $"EVIDENCE SNAPSHOT: OK\nIDENTITY REVALIDATION: OK\n\nSPID: {x.SessionId}\nDatabase: {x.DatabaseName}\nLogin: {x.LoginName}\nHost: {x.HostName}\nTransaction begin: {x.TransactionBeginTime:yyyy-MM-dd HH:mm:ss}\nDuration: {x.Minutes} min\n\nCommand: KILL {x.SessionId}\n\nThis may roll back an active transaction. Execute?",
-                "CONFIRM PROTECTED KILL", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if(confirm!=MessageBoxResult.Yes) { AnalyzerStatus.Text="KILL cancelled by operator."; return; }
-            var result=await _service.KillSessionAsync(x.SessionId);
-            EvidenceText.Text += $"\n\nCORRECTIVE ACTION\nTimestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n{result}";
-            AnalyzerStatus.Text=result;
-            await LoadAsync();
-        }
-        catch(Exception ex) { AnalyzerStatus.Text="ERROR KILL: "+ex.Message; MessageBox.Show(ex.Message,"KILL failed",MessageBoxButton.OK,MessageBoxImage.Error); }
-    }
-
-    private async void StatusOnlyButton_Click(object sender,RoutedEventArgs e)
-    {
-        if(TransactionGrid.SelectedItem is not TransactionIncident x) return;
-        AnalyzerStatus.Text=$"Consultando rollback/status SPID {x.SessionId}...";
-        EvidenceText.Text=await _service.GetKillStatusAsync(x.SessionId);
-        AnalyzerStatus.Text=$"STATUSONLY SPID {x.SessionId} finalizado.";
-    }
+    private void TransactionGrid_SelectionChanged(object sender,SelectionChangedEventArgs e){_evidenceFor=null;KillButton.IsEnabled=false;var selected=TransactionGrid.SelectedItem is TransactionIncident;DiagnosticButton.IsEnabled=selected;SqlButton.IsEnabled=selected;LocksButton.IsEnabled=selected;TransactionButton.IsEnabled=selected;EvidenceButton.IsEnabled=selected;StatusOnlyButton.IsEnabled=selected;if(TransactionGrid.SelectedItem is TransactionIncident x)EvidenceText.Text=SqlHealthService.BuildEvidenceSnapshot(x)+"\n\nCapture evidence to enable protected KILL.";else EvidenceText.Text="Selecciona una transacción para investigar.";}
+    private void EvidenceButton_Click(object sender,RoutedEventArgs e){if(TransactionGrid.SelectedItem is not TransactionIncident x)return;var snapshot=SqlHealthService.BuildEvidenceSnapshot(x);EvidenceText.Text=snapshot;Clipboard.SetText(snapshot);_evidenceFor=x;KillButton.IsEnabled=true;AnalyzerStatus.Text=$"Evidence Snapshot SPID {x.SessionId} capturado. KILL protegido habilitado para esta selección.";}
+    private async void DiagnosticButton_Click(object sender,RoutedEventArgs e){if(TransactionGrid.SelectedItem is not TransactionIncident x)return;try{AnalyzerStatus.Text=$"Diagnosticando SPID {x.SessionId}...";EvidenceText.Text=await _service.GetTransactionDiagnosticsAsync(x);AnalyzerStatus.Text=$"Diagnóstico SPID {x.SessionId} finalizado.";}catch(Exception ex){AnalyzerStatus.Text="ERROR diagnóstico: "+ex.Message;}}
+    private void SqlButton_Click(object sender,RoutedEventArgs e){if(TransactionGrid.SelectedItem is not TransactionIncident x)return;EvidenceText.Text=SqlHealthService.GetTransactionSql(x);AnalyzerStatus.Text=$"SQL/input buffer SPID {x.SessionId}.";}
+    private async void LocksButton_Click(object sender,RoutedEventArgs e){if(TransactionGrid.SelectedItem is not TransactionIncident x)return;try{AnalyzerStatus.Text=$"Consultando locks SPID {x.SessionId}...";EvidenceText.Text=await _service.GetTransactionLocksAsync(x);AnalyzerStatus.Text=$"Locks SPID {x.SessionId} finalizado.";}catch(Exception ex){AnalyzerStatus.Text="ERROR locks: "+ex.Message;}}
+    private void TransactionButton_Click(object sender,RoutedEventArgs e){if(TransactionGrid.SelectedItem is not TransactionIncident x)return;EvidenceText.Text=SqlHealthService.GetTransactionDetail(x);AnalyzerStatus.Text=$"Detalle de transacción SPID {x.SessionId}.";}
+    private async void KillButton_Click(object sender,RoutedEventArgs e){if(TransactionGrid.SelectedItem is not TransactionIncident x||_evidenceFor!=x)return;try{KillButton.IsEnabled=false;var identity=await _service.VerifyTransactionIdentityAsync(x);if(!identity.SameSession){MessageBox.Show(identity.Message,"DBACHECK 2 - Safety check",MessageBoxButton.OK,MessageBoxImage.Warning);AnalyzerStatus.Text=identity.Message;return;}var confirm=MessageBox.Show($"EVIDENCE SNAPSHOT: OK\nIDENTITY REVALIDATION: OK\n\nSPID: {x.SessionId}\nDatabase: {x.DatabaseName}\nLogin: {x.LoginName}\nHost: {x.HostName}\nTransaction begin: {x.TransactionBeginTime:yyyy-MM-dd HH:mm:ss}\nDuration: {x.Minutes} min\n\nCommand: KILL {x.SessionId}\n\nThis may roll back an active transaction. Execute?","CONFIRM PROTECTED KILL",MessageBoxButton.YesNo,MessageBoxImage.Warning);if(confirm!=MessageBoxResult.Yes){AnalyzerStatus.Text="KILL cancelled by operator.";return;}var result=await _service.KillSessionAsync(x.SessionId);EvidenceText.Text+=$"\n\nCORRECTIVE ACTION\nTimestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n{result}";AnalyzerStatus.Text=result;await LoadAsync();}catch(Exception ex){AnalyzerStatus.Text="ERROR KILL: "+ex.Message;MessageBox.Show(ex.Message,"KILL failed",MessageBoxButton.OK,MessageBoxImage.Error);}}
+    private async void StatusOnlyButton_Click(object sender,RoutedEventArgs e){if(TransactionGrid.SelectedItem is not TransactionIncident x)return;AnalyzerStatus.Text=$"Consultando rollback/status SPID {x.SessionId}...";EvidenceText.Text=await _service.GetKillStatusAsync(x.SessionId);AnalyzerStatus.Text=$"STATUSONLY SPID {x.SessionId} finalizado.";}
 }
