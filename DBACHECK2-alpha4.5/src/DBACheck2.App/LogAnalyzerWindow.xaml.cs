@@ -7,7 +7,8 @@ namespace DBACheck2.App;
 public partial class LogAnalyzerWindow : Window
 {
     private readonly SqlHealthService _service;
-    public LogAnalyzerWindow(SqlHealthService service) { InitializeComponent(); _service=service; Loaded += async (_,__)=>await LoadAsync(); }
+    private readonly IncidentCorrelationEngine _correlation;
+    public LogAnalyzerWindow(SqlHealthService service) { InitializeComponent(); _service=service; _correlation=new IncidentCorrelationEngine(service); Loaded += async (_,__)=>await LoadAsync(); }
     private async Task LoadAsync()
     {
         try {
@@ -26,7 +27,7 @@ public partial class LogAnalyzerWindow : Window
         if(Selected is { } x) DetailText.Text=IncidentDiagnosisEngine.DiagnoseLog(x).ToString();
     }
     private async void RefreshButton_Click(object sender,RoutedEventArgs e)=>await LoadAsync();
-    private void DiagnosisButton_Click(object sender,RoutedEventArgs e) { if(Selected is { } x) { DetailText.Text=IncidentDiagnosisEngine.DiagnoseLog(x).ToString(); AnalyzerStatus.Text="Diagnóstico Alpha 4.6 generado."; } }
+    private async void DiagnosisButton_Click(object sender,RoutedEventArgs e) { if(Selected is not { } x)return; try { AnalyzerStatus.Text="Diagnosticando y correlacionando..."; var diagnosis=IncidentDiagnosisEngine.DiagnoseLog(x).ToString(); var correlation=await _correlation.CorrelateLogAsync(x); DetailText.Text=diagnosis+"\n\n"+correlation; AnalyzerStatus.Text="Diagnóstico + correlación Alpha 4.6.1 generado."; } catch(Exception ex) { AnalyzerStatus.Text="ERROR correlación: "+ex.Message; DetailText.Text=ex.ToString(); } }
     private async void FilesButton_Click(object sender,RoutedEventArgs e) { if(Selected is { } x) await ShowAsync(()=>_service.GetLogFilesAsync(x),"Files"); }
     private async void TransactionsButton_Click(object sender,RoutedEventArgs e) { if(Selected is { } x) await ShowAsync(()=>_service.GetLogTransactionsAsync(x),"Transacciones"); }
     private async void BackupsButton_Click(object sender,RoutedEventArgs e) { if(Selected is { } x) await ShowAsync(()=>_service.GetLogBackupsAsync(x),"Backups"); }
