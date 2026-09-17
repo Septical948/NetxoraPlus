@@ -65,8 +65,9 @@ public partial class MainWindow : Window
     private void BackupJobsButton_Click(object sender,RoutedEventArgs e){if(!ValidateTarget())return;HostAnalyzer(new BackupJobsAnalyzerWindow(Service()));}
     private void AlwaysOnButton_Click(object sender,RoutedEventArgs e){if(!ValidateTarget())return;HostAnalyzer(new AlwaysOnAnalyzerWindow(Service()));}
     private void PerformanceButton_Click(object sender,RoutedEventArgs e){if(!ValidateTarget())return;HostAnalyzer(new PerformanceAnalyzerWindow(Service(),Compat()));}
+    private void HistoryButton_Click(object sender,RoutedEventArgs e){HostAnalyzer(new IncidentHistoryWindow(new IncidentHistoryService()));}
 
     private void HealthGrid_SelectionChanged(object sender,SelectionChangedEventArgs e){if(HealthGrid.SelectedItem is HealthItem item)DetailText.Text=$"{item.Status} | {item.Area}\n{item.Summary}\n\n{item.Detail}";}
-    private void SetBusy(bool busy,string? text=null){TestButton.IsEnabled=!busy;QuickButton.IsEnabled=!busy;IncidentButton.IsEnabled=!busy;BlockingButton.IsEnabled=!busy;TempDbButton.IsEnabled=!busy;LogButton.IsEnabled=!busy;BackupJobsButton.IsEnabled=!busy;AlwaysOnButton.IsEnabled=!busy;PerformanceButton.IsEnabled=!busy;if(text!=null)StatusText.Text=text;}
+    private void SetBusy(bool busy,string? text=null){TestButton.IsEnabled=!busy;QuickButton.IsEnabled=!busy;IncidentButton.IsEnabled=!busy;BlockingButton.IsEnabled=!busy;TempDbButton.IsEnabled=!busy;LogButton.IsEnabled=!busy;BackupJobsButton.IsEnabled=!busy;AlwaysOnButton.IsEnabled=!busy;PerformanceButton.IsEnabled=!busy;HistoryButton.IsEnabled=!busy;if(text!=null)StatusText.Text=text;}
     private void SetConnectionState(string text,string background,string foreground){ConnectionStateText.Text=text;ConnectionBadge.Background=(Brush)new BrushConverter().ConvertFromString(background)!;ConnectionStateText.Foreground=(Brush)new BrushConverter().ConvertFromString(foreground)!;}
 }
