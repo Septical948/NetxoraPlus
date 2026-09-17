@@ -832,11 +832,10 @@ Interpretation:
  JOIN msdb.dbo.sysjobsteps s ON j.job_id=s.job_id
  LEFT JOIN msdb.dbo.sysjobservers js ON j.job_id=js.job_id
  OUTER APPLY(SELECT TOP 1 message FROM msdb.dbo.sysjobhistory hh WHERE hh.job_id=j.job_id AND hh.step_id=0 ORDER BY hh.instance_id DESC) h
- WHERE s.command LIKE @db ESCAPE '\\' OR s.step_name LIKE @db ESCAPE '\\' OR j.name LIKE @db ESCAPE '\\'
+ WHERE s.command LIKE @db OR s.step_name LIKE @db OR j.name LIKE @db
  ORDER BY j.name,s.step_id;";
-        static string EscapeLike(string v)=>v.Replace("\\","\\\\").Replace("%","\\%").Replace("_","\\_").Replace("[","\\[");
         await using var cmd=new SqlCommand(sql,cn){CommandTimeout=30};
-        cmd.Parameters.AddWithValue("@db","%"+EscapeLike(databaseName)+"%");
+        cmd.Parameters.AddWithValue("@db","%"+databaseName+"%");
         await using var r=await cmd.ExecuteReaderAsync();
         while(await r.ReadAsync()) items.Add(new JobCorrelationInfo {
             JobId=(Guid)r.GetValue(0),JobName=Convert.ToString(r.GetValue(1))??"",Enabled=Convert.ToBoolean(r.GetValue(2)),
