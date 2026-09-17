@@ -1,0 +1,89 @@
+using System.Windows;
+using System.Windows.Controls;
+using DBACheck2.App.Models;
+using DBACheck2.App.Services;
+
+namespace DBACheck2.App;
+
+public partial class AlwaysOnAnalyzerWindow : Window
+{
+    private readonly SqlHealthService _service;
+    private List<AlwaysOnItem> _items = new();
+
+    public AlwaysOnAnalyzerWindow(SqlHealthService service)
+    {
+        InitializeComponent();
+        _service = service;
+        Loaded += async (_,__) => await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            RefreshButton.IsEnabled=false;
+            AnalyzerStatus.Text="Consultando AlwaysOn...";
+            _items=await _service.GetAlwaysOnItemsAsync();
+            AgGrid.ItemsSource=_items;
+            var critical=_items.Count(x=>x.Status=="CRITICAL");
+            var warning=_items.Count(x=>x.Status=="WARNING");
+            var groups=_items.Select(x=>x.AvailabilityGroup).Distinct().Count();
+            SummaryText.Text=$"{groups} AG(s) | {_items.Count} database replica(s) | Critical {critical} | Warning {warning}";
+            AnalyzerStatus.Text="AlwaysOn Analyzer actualizado.";
+            if(_items.Count==0) DetailText.Text="No se detectaron Availability Groups locales, o AlwaysOn no está habilitado en esta instancia.";
+        }
+        catch(Exception ex)
+        {
+            AnalyzerStatus.Text="ERROR: "+ex.Message;
+            DetailText.Text=ex.ToString();
+        }
+        finally { RefreshButton.IsEnabled=true; }
+    }
+
+    private async void RefreshButton_Click(object sender,RoutedEventArgs e)=>await LoadAsync();
+
+    private void AgGrid_SelectionChanged(object sender,SelectionChangedEventArgs e)
+    {
+        var enabled=AgGrid.SelectedItem is AlwaysOnItem;
+        DiagnosticButton.IsEnabled=enabled;
+        ReplicaButton.IsEnabled=enabled;
+        DatabaseButton.IsEnabled=enabled;
+        EvidenceButton.IsEnabled=enabled;
+    }
+
+    private async void DiagnosticButton_Click(object sender,RoutedEventArgs e)
+    {
+        if(AgGrid.SelectedItem is not AlwaysOnItem x) return;
+        DetailText.Text=await _service.GetAlwaysOnDiagnosticAsync(x);
+        AnalyzerStatus.Text=$"Diagnóstico {x.AvailabilityGroup}/{x.DatabaseName} finalizado.";
+    }
+
+    private async void ReplicaButton_Click(object sender,RoutedEventArgs e)
+    {
+        if(AgGrid.SelectedItem is not AlwaysOnItem x) return;
+        DetailText.Text=await _service.GetAlwaysOnReplicaDetailAsync(x.AvailabilityGroup);
+        AnalyzerStatus.Text=$"Detalle de réplicas {x.AvailabilityGroup}.";
+    }
+
+    private async void DatabaseButton_Click(object sender,RoutedEventArgs e)
+    {
+        if(AgGrid.SelectedItem is not AlwaysOnItem x) return;
+        DetailText.Text=await _service.GetAlwaysOnDatabaseDetailAsync(x.AvailabilityGroup,x.DatabaseName);
+        AnalyzerStatus.Text=$"Detalle database replica {x.DatabaseName}.";
+    }
+
+    private async void ListenerButton_Click(object sender,RoutedEventArgs e)
+    {
+        DetailText.Text=await _service.GetAlwaysOnListenersAsync();
+        AnalyzerStatus.Text="Listeners consultados.";
+    }
+
+    private void EvidenceButton_Click(object sender,RoutedEventArgs e)
+    {
+        if(AgGrid.SelectedItem is not AlwaysOnItem x) return;
+        var snapshot=SqlHealthService.BuildAlwaysOnEvidence(x);
+        DetailText.Text=snapshot;
+        Clipboard.SetText(snapshot);
+        AnalyzerStatus.Text="Evidence Snapshot capturado y copiado al portapapeles.";
+    }
+}
