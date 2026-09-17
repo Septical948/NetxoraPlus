@@ -1,90 +1,171 @@
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using DBACheck2.App.Models;
 using DBACheck2.App.Services;
 
 namespace DBACheck2.App;
+
 public partial class MainWindow : Window
 {
-    public MainWindow()=>InitializeComponent();
-    private SqlHealthService Service()=>new(ServerBox.Text.Trim(),TrustCertBox.IsChecked==true);
+    private Window? _hostedAnalyzer;
 
-    private async void TestButton_Click(object sender,RoutedEventArgs e)
+    public MainWindow()
     {
-        try { SetBusy(true,"Probando conexión..."); StatusText.Text="✓ "+await Service().TestAsync(); }
-        catch(Exception ex) { StatusText.Text="✗ "+ex.Message; }
+        InitializeComponent();
+        ServerBox.TextChanged += (_,__) =>
+        {
+            TargetContextText.Text = string.IsNullOrWhiteSpace(ServerBox.Text) ? "Sin destino" : ServerBox.Text.Trim();
+            SetConnectionState("NO VERIFICADA", "#263244", "#B7C3D7");
+        };
+    }
+
+    private SqlHealthService Service() => new(ServerBox.Text.Trim(), TrustCertBox.IsChecked == true);
+
+    private bool ValidateTarget()
+    {
+        if (!string.IsNullOrWhiteSpace(ServerBox.Text)) return true;
+        StatusText.Text = "ERROR: indicá servidor, instancia o IP antes de continuar.";
+        ServerBox.Focus();
+        SetConnectionState("SIN DESTINO", "#5A2A2A", "#FFD1D1");
+        return false;
+    }
+
+    private async void TestButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ValidateTarget()) return;
+        try
+        {
+            SetBusy(true, $"Probando conexión con {ServerBox.Text.Trim()}...");
+            SetConnectionState("CONECTANDO", "#4A4120", "#FFE69A");
+            StatusText.Text = "✓ " + await Service().TestAsync();
+            SetConnectionState("CONECTADO", "#173D35", "#77E6CE");
+        }
+        catch(Exception ex)
+        {
+            StatusText.Text = $"✗ Destino: {ServerBox.Text.Trim()} | {ex.Message}";
+            SetConnectionState("ERROR", "#5A2A2A", "#FFD1D1");
+        }
         finally { SetBusy(false); }
     }
 
-    private async void QuickButton_Click(object sender,RoutedEventArgs e)
+    private async void QuickButton_Click(object sender, RoutedEventArgs e)
     {
-        var sw=Stopwatch.StartNew();
-        try {
-            SetBusy(true,"Ejecutando Quick Check...");
-            var data=await Service().QuickCheckAsync();
-            HealthGrid.ItemsSource=data;
-            var critical=data.Count(x=>x.Status=="CRITICAL");
-            var warnings=data.Count(x=>x.Status=="WARNING");
-            var errors=data.Count(x=>x.Status=="ERROR");
-            var ok=data.Count(x=>x.Status=="OK");
-            StatusText.Text=$"Quick Check finalizado en {sw.Elapsed.TotalSeconds:0.0}s | {data.Count} áreas | OK {ok} | Warning {warnings} | Critical {critical} | Error {errors}";
+        if (!ValidateTarget()) return;
+        ShowQuickCheck();
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            SetBusy(true, $"Ejecutando Quick Check en {ServerBox.Text.Trim()}...");
+            var data = await Service().QuickCheckAsync();
+            HealthGrid.ItemsSource = data;
+            var critical = data.Count(x => x.Status == "CRITICAL");
+            var warnings = data.Count(x => x.Status == "WARNING");
+            var errors = data.Count(x => x.Status == "ERROR");
+            var ok = data.Count(x => x.Status == "OK");
+            StatusText.Text = $"Destino: {ServerBox.Text.Trim()} | {sw.Elapsed.TotalSeconds:0.0}s | {data.Count} áreas | OK {ok} | Warning {warnings} | Critical {critical} | Error {errors}";
         }
-        catch(Exception ex) { StatusText.Text="✗ Quick Check: "+ex.Message; }
+        catch(Exception ex) { StatusText.Text = $"✗ Destino: {ServerBox.Text.Trim()} | Quick Check: {ex.Message}"; }
         finally { sw.Stop(); SetBusy(false); }
     }
 
-    private void IncidentButton_Click(object sender,RoutedEventArgs e)
+    private void ShowQuickCheck()
     {
-        var w = new TransactionAnalyzerWindow(Service()) { Owner = this };
-        w.ShowDialog();
+        ReleaseHostedAnalyzer();
+        ModuleHost.Visibility = Visibility.Collapsed;
+        QuickCheckView.Visibility = Visibility.Visible;
     }
 
-    private void BlockingButton_Click(object sender,RoutedEventArgs e)
+    private void HostAnalyzer(Window analyzer)
     {
-        var w = new BlockingAnalyzerWindow(Service()) { Owner = this };
-        w.ShowDialog();
+        ReleaseHostedAnalyzer();
+        QuickCheckView.Visibility = Visibility.Collapsed;
+        ModuleHost.Visibility = Visibility.Visible;
+
+        // Reuse the proven Alpha 4.5 analyzer UI/logic, but render its root visual
+        // inside MainWindow. No secondary Window is shown.
+        var content = analyzer.Content as UIElement;
+        analyzer.Content = null;
+        _hostedAnalyzer = analyzer;
+        ModuleHost.Content = content;
+
+        // Existing analyzers load their data from their Loaded handler.
+        analyzer.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
     }
 
-    private void TempDbButton_Click(object sender,RoutedEventArgs e)
+    private void ReleaseHostedAnalyzer()
     {
-        var w = new TempDbAnalyzerWindow(Service()) { Owner = this };
-        w.ShowDialog();
+        ModuleHost.Content = null;
+        _hostedAnalyzer = null;
     }
 
-    private void LogButton_Click(object sender,RoutedEventArgs e)
+    private void IncidentButton_Click(object sender, RoutedEventArgs e)
     {
-        var w = new LogAnalyzerWindow(Service()) { Owner = this };
-        w.ShowDialog();
+        if (!ValidateTarget()) return;
+        HostAnalyzer(new TransactionAnalyzerWindow(Service()));
     }
 
-    private void BackupJobsButton_Click(object sender,RoutedEventArgs e)
+    private void BlockingButton_Click(object sender, RoutedEventArgs e)
     {
-        var w = new BackupJobsAnalyzerWindow(Service()) { Owner = this };
-        w.ShowDialog();
+        if (!ValidateTarget()) return;
+        HostAnalyzer(new BlockingAnalyzerWindow(Service()));
     }
 
-    private void AlwaysOnButton_Click(object sender,RoutedEventArgs e)
+    private void TempDbButton_Click(object sender, RoutedEventArgs e)
     {
-        var w = new AlwaysOnAnalyzerWindow(Service()) { Owner = this };
-        w.ShowDialog();
+        if (!ValidateTarget()) return;
+        HostAnalyzer(new TempDbAnalyzerWindow(Service()));
     }
 
-    private void PerformanceButton_Click(object sender,RoutedEventArgs e)
+    private void LogButton_Click(object sender, RoutedEventArgs e)
     {
-        var w = new PerformanceAnalyzerWindow(Service()) { Owner = this };
-        w.ShowDialog();
+        if (!ValidateTarget()) return;
+        HostAnalyzer(new LogAnalyzerWindow(Service()));
     }
 
-    private void HealthGrid_SelectionChanged(object sender,SelectionChangedEventArgs e)
+    private void BackupJobsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ValidateTarget()) return;
+        HostAnalyzer(new BackupJobsAnalyzerWindow(Service()));
+    }
+
+    private void AlwaysOnButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ValidateTarget()) return;
+        HostAnalyzer(new AlwaysOnAnalyzerWindow(Service()));
+    }
+
+    private void PerformanceButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ValidateTarget()) return;
+        HostAnalyzer(new PerformanceAnalyzerWindow(Service()));
+    }
+
+    private void HealthGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if(HealthGrid.SelectedItem is HealthItem item)
-            DetailText.Text=$"{item.Status} | {item.Area}\n{item.Summary}\n\n{item.Detail}";
+            DetailText.Text = $"{item.Status} | {item.Area}\n{item.Summary}\n\n{item.Detail}";
     }
 
-    private void SetBusy(bool busy,string? text=null)
+    private void SetBusy(bool busy, string? text = null)
     {
-        TestButton.IsEnabled=!busy; QuickButton.IsEnabled=!busy; IncidentButton.IsEnabled=!busy; BlockingButton.IsEnabled=!busy; TempDbButton.IsEnabled=!busy; LogButton.IsEnabled=!busy; BackupJobsButton.IsEnabled=!busy; AlwaysOnButton.IsEnabled=!busy; PerformanceButton.IsEnabled=!busy;
-        if(text!=null) StatusText.Text=text;
+        TestButton.IsEnabled = !busy;
+        QuickButton.IsEnabled = !busy;
+        IncidentButton.IsEnabled = !busy;
+        BlockingButton.IsEnabled = !busy;
+        TempDbButton.IsEnabled = !busy;
+        LogButton.IsEnabled = !busy;
+        BackupJobsButton.IsEnabled = !busy;
+        AlwaysOnButton.IsEnabled = !busy;
+        PerformanceButton.IsEnabled = !busy;
+        if(text != null) StatusText.Text = text;
+    }
+
+    private void SetConnectionState(string text, string background, string foreground)
+    {
+        ConnectionStateText.Text = text;
+        ConnectionBadge.Background = (Brush)new BrushConverter().ConvertFromString(background)!;
+        ConnectionStateText.Foreground = (Brush)new BrushConverter().ConvertFromString(foreground)!;
     }
 }
