@@ -820,6 +820,33 @@ Interpretation:
  ORDER BY CASE WHEN j.enabled=1 AND COALESCE(js.last_run_outcome,5)=0 THEN 0 ELSE 1 END,j.name;";
         await using var cmd=new SqlCommand(sql,cn){CommandTimeout=30};await using var r=await cmd.ExecuteReaderAsync();while(await r.ReadAsync()){int raw=Convert.ToInt32(r.GetValue(6));int sec=(raw/10000)*3600+((raw%10000)/100)*60+(raw%100);items.Add(new AgentJobInfo{JobId=(Guid)r.GetValue(0),JobName=Convert.ToString(r.GetValue(1))??"",Enabled=Convert.ToBoolean(r.GetValue(2)),LastOutcome=Convert.ToInt32(r.GetValue(3)),LastRun=r.IsDBNull(4)?null:Convert.ToDateTime(r.GetValue(4)),LastMessage=Convert.ToString(r.GetValue(5))??"",LastDurationSeconds=sec});}return items;
     }
+    public async Task<List<JobCorrelationInfo>> GetJobStepCorrelationsAsync(string databaseName)
+    {
+        var items=new List<JobCorrelationInfo>();
+        await using var cn=new SqlConnection(_connectionString); await cn.OpenAsync();
+        const string sql=@"SELECT j.job_id,j.name,j.enabled,s.step_id,s.step_name,s.subsystem,COALESCE(s.command,''),
+ COALESCE(js.last_run_outcome,5),
+ CASE WHEN js.last_run_date>0 THEN msdb.dbo.agent_datetime(js.last_run_date,js.last_run_time) END,
+ COALESCE(h.message,'')
+ FROM msdb.dbo.sysjobs j
+ JOIN msdb.dbo.sysjobsteps s ON j.job_id=s.job_id
+ LEFT JOIN msdb.dbo.sysjobservers js ON j.job_id=js.job_id
+ OUTER APPLY(SELECT TOP 1 message FROM msdb.dbo.sysjobhistory hh WHERE hh.job_id=j.job_id AND hh.step_id=0 ORDER BY hh.instance_id DESC) h
+ WHERE s.command LIKE @db ESCAPE '\\' OR s.step_name LIKE @db ESCAPE '\\' OR j.name LIKE @db ESCAPE '\\'
+ ORDER BY j.name,s.step_id;";
+        static string EscapeLike(string v)=>v.Replace("\\","\\\\").Replace("%","\\%").Replace("_","\\_").Replace("[","\\[");
+        await using var cmd=new SqlCommand(sql,cn){CommandTimeout=30};
+        cmd.Parameters.AddWithValue("@db","%"+EscapeLike(databaseName)+"%");
+        await using var r=await cmd.ExecuteReaderAsync();
+        while(await r.ReadAsync()) items.Add(new JobCorrelationInfo {
+            JobId=(Guid)r.GetValue(0),JobName=Convert.ToString(r.GetValue(1))??"",Enabled=Convert.ToBoolean(r.GetValue(2)),
+            StepId=Convert.ToInt32(r.GetValue(3)),StepName=Convert.ToString(r.GetValue(4))??"",Subsystem=Convert.ToString(r.GetValue(5))??"",
+            Command=Convert.ToString(r.GetValue(6))??"",LastOutcome=Convert.ToInt32(r.GetValue(7)),LastRun=r.IsDBNull(8)?null:Convert.ToDateTime(r.GetValue(8)),
+            LastMessage=Convert.ToString(r.GetValue(9))??""
+        });
+        return items;
+    }
+
     public async Task<string> GetJobHistoryAsync(AgentJobInfo x)
     {
         await using var cn=new SqlConnection(_connectionString);await cn.OpenAsync();const string sql=@"SELECT TOP 30 h.step_id,COALESCE(h.step_name,''),h.run_status,h.run_date,h.run_time,h.run_duration,COALESCE(h.message,'') FROM msdb.dbo.sysjobhistory h WHERE h.job_id=@id ORDER BY h.instance_id DESC;";await using var cmd=new SqlCommand(sql,cn){CommandTimeout=30};cmd.Parameters.AddWithValue("@id",x.JobId);await using var r=await cmd.ExecuteReaderAsync();var sb=new System.Text.StringBuilder($"JOB HISTORY - {x.JobName}\n\nSTEP | STATUS | DATE | DURATION | MESSAGE\n");while(await r.ReadAsync()){var st=Convert.ToInt32(r.GetValue(2)) switch{0=>"FAILED",1=>"SUCCEEDED",2=>"RETRY",3=>"CANCELED",_=>"UNKNOWN"};sb.AppendLine($"{r.GetValue(0)} {r.GetValue(1)} | {st} | {r.GetValue(3)} {r.GetValue(4)} | {r.GetValue(5)} | {r.GetValue(6)}");}return sb.ToString();
