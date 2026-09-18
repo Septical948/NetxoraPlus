@@ -20,7 +20,7 @@
                 <Grid.ColumnDefinitions><ColumnDefinition Width="250"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="NETXORA  |  DBACHECK 2" Foreground="#38E8D0" FontSize="21" FontWeight="Bold"/>
-                    <TextBlock Text="Alpha 5.0 · Incident Operations" Foreground="#8291A8" FontSize="12"/>
+                    <TextBlock Text="Alpha 5.2 · Assistant + Profiles + Multi-engine" Foreground="#8291A8" FontSize="12"/>
                 </StackPanel>
                 <TextBlock Grid.Column="1" Text="DESTINO SQL" Foreground="#8291A8" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,10,0"/>
                 <TextBox x:Name="ServerBox" Grid.Column="2" Height="36" MinWidth="230" MaxWidth="520" FontSize="14" Padding="9" VerticalContentAlignment="Center" Text="localhost" HorizontalAlignment="Stretch" ToolTip="Servidor, servidor\instancia, IP o IP,puerto"/>
@@ -50,6 +50,7 @@
                         <Button x:Name="PerformanceButton" Style="{StaticResource NavButton}" Content="Performance" Click="PerformanceButton_Click"/>
                         <Button x:Name="HistoryButton" Style="{StaticResource NavButton}" Content="Incident History" Click="HistoryButton_Click"/>
                         <Button x:Name="OperationsButton" Style="{StaticResource NavButton}" Content="Incident Operations" Click="OperationsButton_Click"/>
+                        <Button x:Name="AssistantButton" Style="{StaticResource NavButton}" Content="DBA Assistant / Profiles" Click="AssistantButton_Click"/>
                     </StackPanel>
                     <StackPanel DockPanel.Dock="Bottom" VerticalAlignment="Bottom">
                         <TextBlock Text="CONTEXTO ACTUAL" Foreground="#718096" FontSize="10" FontWeight="Bold" Margin="6,18,0,5"/>
@@ -80,7 +81,7 @@
         </Grid>
 
         <Border Grid.Row="2" Background="#0E1828" BorderBrush="#22324A" BorderThickness="0,1,0,0" Padding="18,7">
-            <TextBlock Foreground="#718096" FontSize="11" Text="DBACHECK 2.0.0-alpha.5.0 | Incident Operations | Correlation | Evidence | Safe Playbooks | SQL Server"/>
+            <TextBlock Foreground="#718096" FontSize="11" Text="DBACHECK 2.0.0-alpha.5.2 | DBA Assistant | Server Profiles | Multi-engine foundation | Read-only"/>
         </Border>
     </Grid>
 </Window>
