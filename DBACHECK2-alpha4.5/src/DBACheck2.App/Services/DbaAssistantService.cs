@@ -17,7 +17,7 @@ public sealed class DbaAssistantService
         sb.AppendLine($"Target: {profile.Host} | Environment: {profile.Environment}");
         sb.AppendLine();
 
-        if(profile.Engine!=DatabaseEngine.SqlServer)
+        if(profile.Engine is DatabaseEngine.Oracle or DatabaseEngine.MySqlMariaDb)
         {
             sb.AppendLine($"Provider {provider.DisplayName}: estructura multi-engine disponible; collectors específicos aún no habilitados.");
             sb.AppendLine("No se ejecutó ninguna consulta contra el motor.");
@@ -74,13 +74,13 @@ public sealed class DbaAssistantService
     private static IEnumerable<HealthItem> Route(IEnumerable<HealthItem> all,Intent intent)
     {
         var areas=intent switch {
-            Intent.Log => new[]{"LOG"},
+            Intent.Log => new[]{"LOG","WAL"},
             Intent.Backup => new[]{"BACKUPS"},
             Intent.Blocking => new[]{"BLOCKING"},
             Intent.Transactions => new[]{"TRANSACTIONS","BLOCKING"},
             Intent.TempDb => new[]{"TEMPDB","VERSION STORE","TRANSACTIONS"},
             Intent.Performance => new[]{"WAITS","BLOCKING","TRANSACTIONS"},
-            Intent.Ha => new[]{"ALWAYSON"},
+            Intent.Ha => new[]{"ALWAYSON","REPLICATION"},
             Intent.Jobs => new[]{"JOBS"},
             _ => Array.Empty<string>()
         };
@@ -95,6 +95,8 @@ public sealed class DbaAssistantService
 
     private static string CauseFor(HealthItem x)=>x.Area switch {
         "LOG"=>"Uso elevado o condición de reutilización del transaction log. Correlacionar log_reuse_wait_desc antes de concluir causa.",
+        "WAL"=>"El estado WAL observado requiere correlación con generación, archivado y/o replay según el rol del servidor.",
+        "REPLICATION"=>"El estado de replicación/standby observado requiere revisar rol, conexiones y atraso con muestras adicionales.",
         "BACKUPS"=>"La política o ejecución reciente de backups no cumple el umbral observado por DBACHECK.",
         "JOBS"=>"Uno o más SQL Agent Jobs habilitados finalizaron con error en su última ejecución.",
         "BLOCKING"=>"Existe espera entre sesiones en la muestra actual; identificar blocker raíz y recurso antes de actuar.",
@@ -107,7 +109,9 @@ public sealed class DbaAssistantService
     };
 
     private static string ActionFor(HealthItem x)=>x.Area switch {
-        "LOG"=>"Revisar porcentaje usado, log_reuse_wait_desc, backups LOG y transacciones abiertas. No ejecutar SHRINK como respuesta automática.",
+        "LOG"=>"Revisar porcentaje usado, log_reuse_wait_desc, backups LOG y transacciones abiertas.",
+        "WAL"=>"Revisar posición WAL/XLOG, archivado y estado de standby/replicación según la versión PostgreSQL.",
+        "REPLICATION"=>"Revisar pg_stat_replication/estado recovery y medir lag antes de concluir una falla.",
         "BACKUPS"=>"Revisar política, último backup y job responsable; confirmar que el destino y la retención sean correctos.",
         "JOBS"=>"Abrir historial del job fallido y revisar el step/error exacto antes de reejecutarlo.",
         "BLOCKING"=>"Identificar blocker raíz, SQL, transacción y locks; preservar evidencia antes de cualquier KILL.",
