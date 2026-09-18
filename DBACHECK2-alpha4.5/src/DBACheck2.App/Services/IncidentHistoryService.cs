@@ -40,6 +40,7 @@ public sealed class IncidentHistoryService
     }
     public async Task<long> SaveAsync(string server,string database,string module,IncidentDiagnosis d)
     {
+        server=NormalizeServer(server);
         var key=BuildKey(server,database,module,d.ProbableCause);
         await using var cn=Open(); await cn.OpenAsync();
         await using var cmd=cn.CreateCommand();
@@ -55,7 +56,7 @@ public sealed class IncidentHistoryService
     {
         await using var cn=Open();await cn.OpenAsync();await using var cmd=cn.CreateCommand();
         cmd.CommandText="SELECT COUNT(*) FROM incidents WHERE incident_key=$key;";
-        cmd.Parameters.AddWithValue("$key",BuildKey(server,database,module,cause));
+        cmd.Parameters.AddWithValue("$key",BuildKey(NormalizeServer(server),database,module,cause));
         return Convert.ToInt32(await cmd.ExecuteScalarAsync());
     }
     public async Task<List<IncidentRecord>> ListAsync(int limit=200)
@@ -73,6 +74,12 @@ public sealed class IncidentHistoryService
         cmd.Parameters.AddWithValue("$a",action);cmd.Parameters.AddWithValue("$v",verification);cmd.Parameters.AddWithValue("$now",DateTime.Now.ToString("O"));cmd.Parameters.AddWithValue("$id",id);await cmd.ExecuteNonQueryAsync();
     }
     public string DatabasePath=>_dbPath;
+    public static string NormalizeServer(string server)
+    {
+        if(string.IsNullOrWhiteSpace(server)) return "";
+        var i=server.IndexOf(" | ",StringComparison.Ordinal);
+        return (i>=0?server[..i]:server).Trim();
+    }
     private static string BuildKey(string s,string d,string m,string c)=>$"{s}|{d}|{m}|{NormalizeCause(c)}".ToUpperInvariant();
     private static string NormalizeCause(string c)
     {
