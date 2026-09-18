@@ -4,6 +4,7 @@ public static class DatabaseProviderFactory
 {
  public static IDatabaseProvider Create(ServerProfile p)=>p.Engine switch {
   DatabaseEngine.SqlServer=>new SqlServerProvider(p),
+  DatabaseEngine.PostgreSql=>new PostgreSqlProvider(p),
   _=>new PlannedDatabaseProvider(p.Engine)
  };
  private sealed class PlannedDatabaseProvider(DatabaseEngine engine):IDatabaseProvider
