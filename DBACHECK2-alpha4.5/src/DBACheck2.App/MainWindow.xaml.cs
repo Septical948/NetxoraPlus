@@ -10,6 +10,8 @@ namespace DBACheck2.App;
 public partial class MainWindow : Window
 {
     private Window? _hostedAnalyzer;
+    private DatabaseEngine _activeEngine=DatabaseEngine.SqlServer;
+    private string _activeProfileName="Manual";
 
     public MainWindow()
     {
@@ -67,7 +69,26 @@ public partial class MainWindow : Window
     private void PerformanceButton_Click(object sender,RoutedEventArgs e){if(!ValidateTarget())return;HostAnalyzer(new PerformanceAnalyzerWindow(Service(),Compat()));}
     private void HistoryButton_Click(object sender,RoutedEventArgs e){HostAnalyzer(new IncidentHistoryWindow(new IncidentHistoryService()));}
     private void OperationsButton_Click(object sender,RoutedEventArgs e){if(!ValidateTarget())return;HostAnalyzer(new IncidentOperationsWindow(Service()));}
-    private void AssistantButton_Click(object sender,RoutedEventArgs e){HostAnalyzer(new AssistantProfilesWindow(ServerBox.Text.Trim()));}
+    private void AssistantButton_Click(object sender,RoutedEventArgs e)
+    {
+        var window=new AssistantProfilesWindow(ServerBox.Text.Trim());
+        window.ProfileActivated+=ActivateProfile;
+        HostAnalyzer(window);
+    }
+
+    private void ActivateProfile(ServerProfile profile)
+    {
+        _activeEngine=profile.Engine;
+        _activeProfileName=string.IsNullOrWhiteSpace(profile.Name)?"Manual":profile.Name;
+        ServerBox.Text=profile.Host;
+        TrustCertBox.IsChecked=profile.TrustCertificate;
+        TargetContextText.Text=$"{_activeProfileName} | {profile.Engine} | {profile.Host}";
+        StatusText.Text=$"Perfil global activo: {_activeProfileName} | {profile.Engine} | {profile.Host}";
+        if(profile.Engine==DatabaseEngine.SqlServer)
+            SetConnectionState("NO VERIFICADA","#263244","#B7C3D7");
+        else
+            SetConnectionState($"{profile.Engine} · PROVIDER PENDIENTE","#4A4120","#FFE69A");
+    }
 
     private void HealthGrid_SelectionChanged(object sender,SelectionChangedEventArgs e){if(HealthGrid.SelectedItem is HealthItem item)DetailText.Text=$"{item.Status} | {item.Area}\n{item.Summary}\n\n{item.Detail}";}
     private void SetBusy(bool busy,string? text=null){TestButton.IsEnabled=!busy;QuickButton.IsEnabled=!busy;IncidentButton.IsEnabled=!busy;BlockingButton.IsEnabled=!busy;TempDbButton.IsEnabled=!busy;LogButton.IsEnabled=!busy;BackupJobsButton.IsEnabled=!busy;AlwaysOnButton.IsEnabled=!busy;PerformanceButton.IsEnabled=!busy;HistoryButton.IsEnabled=!busy;OperationsButton.IsEnabled=!busy;AssistantButton.IsEnabled=!busy;if(text!=null)StatusText.Text=text;}
