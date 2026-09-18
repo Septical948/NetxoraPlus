@@ -22,7 +22,7 @@ public partial class AssistantProfilesWindow:Window
         Loaded+=async(_,__)=>await Refresh();
     }
 
-    private ServerProfile Current()=>new(){Name=ProfileName.Text.Trim(),Engine=(DatabaseEngine)(EngineBox.SelectedItem??DatabaseEngine.SqlServer),Host=HostBox.Text.Trim(),Environment="PROD",Authentication="Windows",TrustCertificate=true};
+    private ServerProfile Current()=>new(){Name=ProfileName.Text.Trim(),Engine=(DatabaseEngine)(EngineBox.SelectedItem??DatabaseEngine.SqlServer),Host=HostBox.Text.Trim(),Port=int.TryParse(PortBox.Text,out var p)?p:null,DatabaseOrService=DatabaseBox.Text.Trim(),Username=UsernameBox.Text.Trim(),Environment="PROD",Authentication=(DatabaseEngine)(EngineBox.SelectedItem??DatabaseEngine.SqlServer)==DatabaseEngine.SqlServer?"Windows":"Database",TrustCertificate=true};
 
     private async Task Refresh()
     {
@@ -41,7 +41,7 @@ public partial class AssistantProfilesWindow:Window
 
     private void Load_Click(object s,RoutedEventArgs e){if(ProfilesBox.SelectedItem is ServerProfile p)Apply(p);}
     private void ProfilesBox_SelectionChanged(object s,SelectionChangedEventArgs e){if(ProfilesBox.SelectedItem is ServerProfile p)Apply(p);}
-    private void Apply(ServerProfile p){ProfileName.Text=p.Name;EngineBox.SelectedItem=p.Engine;HostBox.Text=p.Host;}
+    private void Apply(ServerProfile p){ProfileName.Text=p.Name;EngineBox.SelectedItem=p.Engine;HostBox.Text=p.Host;PortBox.Text=p.Port?.ToString()??"";DatabaseBox.Text=p.DatabaseOrService;UsernameBox.Text=p.Username??"";}
 
     private void UseProfile_Click(object s,RoutedEventArgs e)
     {
