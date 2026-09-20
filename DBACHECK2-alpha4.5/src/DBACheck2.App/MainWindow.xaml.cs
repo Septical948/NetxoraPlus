@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using DBACheck2.App.Models;
 using DBACheck2.App.Services;
+using DBACheck2.App.Providers;
 
 namespace DBACheck2.App;
 
@@ -12,6 +13,7 @@ public partial class MainWindow : Window
     private Window? _hostedAnalyzer;
     private DatabaseEngine _activeEngine=DatabaseEngine.SqlServer;
     private string _activeProfileName="Manual";
+    private ServerProfile? _activeProfile;
 
     public MainWindow()
     {
@@ -37,9 +39,16 @@ public partial class MainWindow : Window
         if(!ValidateTarget()) return;
         try {
             SetBusy(true,$"Probando conexión con {ServerBox.Text.Trim()}..."); SetConnectionState("CONECTANDO","#4A4120","#FFE69A");
-            var caps=await Compat().DetectAsync();
-            StatusText.Text=$"✓ {caps.ServerName} | {caps.VersionLabel} ({caps.ProductVersion}) | {caps.Edition} | Perfil {caps.Profile.ToString().ToUpperInvariant()}";
-            SetConnectionState($"CONECTADO · {caps.Profile.ToString().ToUpperInvariant()}","#173D35","#77E6CE");
+            if(_activeProfile is not null && _activeProfile.Engine!=DatabaseEngine.SqlServer) {
+                var provider=DatabaseProviderFactory.Create(_activeProfile);
+                var info=await provider.TestAsync();
+                StatusText.Text=$"✓ {_activeProfile.Name} | {provider.DisplayName} | {info.Replace("\n"," | ")}";
+                SetConnectionState($"CONECTADO · {provider.DisplayName.ToUpperInvariant()}","#173D35","#77E6CE");
+            } else {
+                var caps=await Compat().DetectAsync();
+                StatusText.Text=$"✓ {caps.ServerName} | {caps.VersionLabel} ({caps.ProductVersion}) | {caps.Edition} | Perfil {caps.Profile.ToString().ToUpperInvariant()}";
+                SetConnectionState($"CONECTADO · {caps.Profile.ToString().ToUpperInvariant()}","#173D35","#77E6CE");
+            }
         } catch(Exception ex) { StatusText.Text=$"✗ Destino: {ServerBox.Text.Trim()} | {ex.Message}"; SetConnectionState("ERROR","#5A2A2A","#FFD1D1"); }
         finally { SetBusy(false); }
     }
@@ -49,9 +58,15 @@ public partial class MainWindow : Window
         if(!ValidateTarget()) return; ShowQuickCheck(); var sw=Stopwatch.StartNew();
         try {
             SetBusy(true,$"Ejecutando Quick Check en {ServerBox.Text.Trim()}...");
-            var compat=Compat(); var caps=await compat.DetectAsync(); var data=await compat.QuickCheckAsync(); HealthGrid.ItemsSource=data;
+            List<HealthItem> data; string engineInfo;
+            if(_activeProfile is not null && _activeProfile.Engine!=DatabaseEngine.SqlServer) {
+                var provider=DatabaseProviderFactory.Create(_activeProfile); data=await provider.QuickCheckAsync(); engineInfo=provider.DisplayName;
+            } else {
+                var compat=Compat(); var caps=await compat.DetectAsync(); data=await compat.QuickCheckAsync(); engineInfo=$"{caps.VersionLabel} | {caps.Profile.ToString().ToUpperInvariant()}";
+            }
+            HealthGrid.ItemsSource=data;
             var critical=data.Count(x=>x.Status=="CRITICAL"); var warnings=data.Count(x=>x.Status=="WARNING"); var errors=data.Count(x=>x.Status=="ERROR"); var ok=data.Count(x=>x.Status=="OK");
-            StatusText.Text=$"Destino: {ServerBox.Text.Trim()} | {caps.VersionLabel} | {caps.Profile.ToString().ToUpperInvariant()} | {sw.Elapsed.TotalSeconds:0.0}s | {data.Count} áreas | OK {ok} | Warning {warnings} | Critical {critical} | Error {errors}";
+            StatusText.Text=$"Destino: {ServerBox.Text.Trim()} | {engineInfo} | {sw.Elapsed.TotalSeconds:0.0}s | {data.Count} áreas | OK {ok} | Warning {warnings} | Critical {critical} | Error {errors}";
         } catch(Exception ex) { StatusText.Text=$"✗ Destino: {ServerBox.Text.Trim()} | Quick Check: {ex.Message}"; }
         finally { sw.Stop(); SetBusy(false); }
     }
@@ -78,6 +93,7 @@ public partial class MainWindow : Window
 
     private void ActivateProfile(ServerProfile profile)
     {
+        _activeProfile=profile;
         _activeEngine=profile.Engine;
         _activeProfileName=string.IsNullOrWhiteSpace(profile.Name)?"Manual":profile.Name;
         ServerBox.Text=profile.Host;
@@ -87,7 +103,7 @@ public partial class MainWindow : Window
         if(profile.Engine==DatabaseEngine.SqlServer)
             SetConnectionState("NO VERIFICADA","#263244","#B7C3D7");
         else
-            SetConnectionState($"{profile.Engine} · PROVIDER PENDIENTE","#4A4120","#FFE69A");
+            SetConnectionState($"{profile.Engine} · NO VERIFICADA","#263244","#B7C3D7");
     }
 
     private void HealthGrid_SelectionChanged(object sender,SelectionChangedEventArgs e){if(HealthGrid.SelectedItem is HealthItem item)DetailText.Text=$"{item.Status} | {item.Area}\n{item.Summary}\n\n{item.Detail}";}
