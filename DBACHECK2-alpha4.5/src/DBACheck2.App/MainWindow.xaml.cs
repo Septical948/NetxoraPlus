@@ -75,13 +75,16 @@ public partial class MainWindow : Window
     private void HostAnalyzer(Window analyzer){ReleaseHostedAnalyzer();QuickCheckView.Visibility=Visibility.Collapsed;ModuleHost.Visibility=Visibility.Visible;var content=analyzer.Content as UIElement;analyzer.Content=null;_hostedAnalyzer=analyzer;ModuleHost.Content=content;analyzer.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));}
     private void ReleaseHostedAnalyzer(){ModuleHost.Content=null;_hostedAnalyzer=null;}
 
-    private void IncidentButton_Click(object sender,RoutedEventArgs e){if(!ValidateTarget())return;HostAnalyzer(new TransactionAnalyzerWindow(Service(),Compat()));}
-    private void BlockingButton_Click(object sender,RoutedEventArgs e){if(!ValidateTarget())return;HostAnalyzer(new BlockingAnalyzerWindow(Service(),Compat()));}
-    private void TempDbButton_Click(object sender,RoutedEventArgs e){if(!ValidateTarget())return;HostAnalyzer(new TempDbAnalyzerWindow(Service()));}
-    private void LogButton_Click(object sender,RoutedEventArgs e){if(!ValidateTarget())return;HostAnalyzer(new LogAnalyzerWindow(Service()));}
-    private void BackupJobsButton_Click(object sender,RoutedEventArgs e){if(!ValidateTarget())return;HostAnalyzer(new BackupJobsAnalyzerWindow(Service()));}
-    private void AlwaysOnButton_Click(object sender,RoutedEventArgs e){if(!ValidateTarget())return;HostAnalyzer(new AlwaysOnAnalyzerWindow(Service()));}
-    private void PerformanceButton_Click(object sender,RoutedEventArgs e){if(!ValidateTarget())return;HostAnalyzer(new PerformanceAnalyzerWindow(Service(),Compat()));}
+    private bool IsSql=>_activeProfile is null||_activeProfile.Engine==DatabaseEngine.SqlServer;
+    private IDatabaseProvider ActiveProvider()=>DatabaseProviderFactory.Create(_activeProfile??new ServerProfile{Engine=DatabaseEngine.SqlServer,Host=ServerBox.Text.Trim(),TrustCertificate=TrustCertBox.IsChecked==true});
+    private void OpenEngine(string module,string title,Func<Window> sql){if(!ValidateTarget())return;if(IsSql)HostAnalyzer(sql());else HostAnalyzer(new EngineAnalyzerWindow(ActiveProvider(),module,title));}
+    private void IncidentButton_Click(object sender,RoutedEventArgs e)=>OpenEngine("transactions",IncidentButton.Content.ToString()!,()=>new TransactionAnalyzerWindow(Service(),Compat()));
+    private void BlockingButton_Click(object sender,RoutedEventArgs e)=>OpenEngine("blocking",BlockingButton.Content.ToString()!,()=>new BlockingAnalyzerWindow(Service(),Compat()));
+    private void TempDbButton_Click(object sender,RoutedEventArgs e)=>OpenEngine("temp",TempDbButton.Content.ToString()!,()=>new TempDbAnalyzerWindow(Service()));
+    private void LogButton_Click(object sender,RoutedEventArgs e)=>OpenEngine("log",LogButton.Content.ToString()!,()=>new LogAnalyzerWindow(Service()));
+    private void BackupJobsButton_Click(object sender,RoutedEventArgs e)=>OpenEngine("backup",BackupJobsButton.Content.ToString()!,()=>new BackupJobsAnalyzerWindow(Service()));
+    private void AlwaysOnButton_Click(object sender,RoutedEventArgs e)=>OpenEngine("ha",AlwaysOnButton.Content.ToString()!,()=>new AlwaysOnAnalyzerWindow(Service()));
+    private void PerformanceButton_Click(object sender,RoutedEventArgs e)=>OpenEngine("performance",PerformanceButton.Content.ToString()!,()=>new PerformanceAnalyzerWindow(Service(),Compat()));
     private void HistoryButton_Click(object sender,RoutedEventArgs e){HostAnalyzer(new IncidentHistoryWindow(new IncidentHistoryService()));}
     private void OperationsButton_Click(object sender,RoutedEventArgs e){if(!ValidateTarget())return;HostAnalyzer(new IncidentOperationsWindow(Service()));}
     private void AssistantButton_Click(object sender,RoutedEventArgs e)
@@ -100,10 +103,17 @@ public partial class MainWindow : Window
         TrustCertBox.IsChecked=profile.TrustCertificate;
         TargetContextText.Text=$"{_activeProfileName} | {profile.Engine} | {profile.Host}";
         StatusText.Text=$"Perfil global activo: {_activeProfileName} | {profile.Engine} | {profile.Host}";
-        if(profile.Engine==DatabaseEngine.SqlServer)
-            SetConnectionState("NO VERIFICADA","#263244","#B7C3D7");
-        else
-            SetConnectionState($"{profile.Engine} · NO VERIFICADA","#263244","#B7C3D7");
+        ApplyEngineNavigation(profile.Engine);
+        if(profile.Engine==DatabaseEngine.SqlServer) SetConnectionState("NO VERIFICADA","#263244","#B7C3D7");
+        else SetConnectionState($"{profile.Engine} · NO VERIFICADA","#263244","#B7C3D7");
+    }
+
+    private void ApplyEngineNavigation(DatabaseEngine e)
+    {
+        if(e==DatabaseEngine.PostgreSql){IncidentButton.Content="Long Transactions";BlockingButton.Content="Locks / Blocking";TempDbButton.Content="Vacuum / Temp Usage";LogButton.Content="WAL / XLOG";BackupJobsButton.Content="Backup / Maintenance";AlwaysOnButton.Content="Streaming Replication";PerformanceButton.Content="Performance / Indexes";}
+        else if(e==DatabaseEngine.Oracle){IncidentButton.Content="Long Transactions";BlockingButton.Content="Locks / Blocking";TempDbButton.Content="TEMP / UNDO";LogButton.Content="Redo / Archive";BackupJobsButton.Content="Backup / Scheduler";AlwaysOnButton.Content="Data Guard / HA";PerformanceButton.Content="Performance / SQL";}
+        else if(e==DatabaseEngine.MySqlMariaDb){IncidentButton.Content="Long Transactions";BlockingButton.Content="InnoDB Locks";TempDbButton.Content="Temp / InnoDB";LogButton.Content="Redo / Binlog";BackupJobsButton.Content="Backup / Events";AlwaysOnButton.Content="Replication";PerformanceButton.Content="Performance / Indexes";}
+        else {IncidentButton.Content="Long Transactions";BlockingButton.Content="Blocking Analyzer";TempDbButton.Content="TempDB / Version Store";LogButton.Content="Transaction Log";BackupJobsButton.Content="Backups / Jobs";AlwaysOnButton.Content="AlwaysOn / HA";PerformanceButton.Content="Performance";}
     }
 
     private void HealthGrid_SelectionChanged(object sender,SelectionChangedEventArgs e){if(HealthGrid.SelectedItem is HealthItem item)DetailText.Text=$"{item.Status} | {item.Area}\n{item.Summary}\n\n{item.Detail}";}
