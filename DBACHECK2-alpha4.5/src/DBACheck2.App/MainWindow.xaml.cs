@@ -18,6 +18,8 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        LanguageBox.SelectedIndex=LocalizationService.Current==AppLanguage.Es?0:1;
+        ApplyLanguage();
         ServerBox.TextChanged += (_,__) => {
             TargetContextText.Text=string.IsNullOrWhiteSpace(ServerBox.Text)?"Sin destino":ServerBox.Text.Trim();
             SetConnectionState("NO VERIFICADA","#263244","#B7C3D7");
@@ -108,12 +110,35 @@ public partial class MainWindow : Window
         else SetConnectionState($"{profile.Engine} · NO VERIFICADA","#263244","#B7C3D7");
     }
 
+    private void LanguageBox_SelectionChanged(object sender,SelectionChangedEventArgs e)
+    {
+        if(!IsLoaded && LanguageBox.SelectedItem is null)return;
+        var lang=LanguageBox.SelectedIndex==1?AppLanguage.En:AppLanguage.Es;
+        LocalizationService.Set(lang); ApplyLanguage();
+    }
+
+    private void ApplyLanguage()
+    {
+        if(SubtitleText is null)return;
+        SubtitleText.Text=LocalizationService.T("App.Subtitle"); TargetLabelText.Text=LocalizationService.T("Connection.Target");
+        TestButton.Content=LocalizationService.T("Connection.Test"); TrustCertBox.Content=LocalizationService.T("Connection.Trust");
+        OperationLabelText.Text=LocalizationService.T("Nav.Operation"); QuickButton.Content=LocalizationService.T("Nav.Quick");
+        HistoryButton.Content=LocalizationService.T("Nav.History"); OperationsButton.Content=LocalizationService.T("Nav.Operations"); AssistantButton.Content=LocalizationService.T("Nav.Assistant");
+        CurrentContextLabelText.Text=LocalizationService.T("Context.Current"); AuthenticationText.Text=LocalizationService.T("Context.WindowsAuth");
+        QuickTitleText.Text=LocalizationService.T("Quick.Title"); QuickSubtitleText.Text=LocalizationService.T("Quick.Subtitle");
+        StatusColumn.Header=LocalizationService.T("Grid.Status"); AreaColumn.Header=LocalizationService.T("Grid.Area"); SummaryColumn.Header=LocalizationService.T("Grid.Summary"); EvidenceColumn.Header=LocalizationService.T("Grid.Evidence");
+        EvidenceTitleText.Text=LocalizationService.T("Grid.EvidenceTitle"); LanguageLabelText.Text=LocalizationService.T("Language.Label");
+        FooterText.Text=$"DBACHECK 2 Beta 1 | Multi-engine | {LocalizationService.T("Common.ReadOnly")}";
+        ApplyEngineNavigation(_activeEngine);
+    }
+
     private void ApplyEngineNavigation(DatabaseEngine e)
     {
-        if(e==DatabaseEngine.PostgreSql){IncidentButton.Content="Long Transactions";BlockingButton.Content="Locks / Blocking";TempDbButton.Content="Vacuum / Temp Usage";LogButton.Content="WAL / XLOG";BackupJobsButton.Content="Backup / Maintenance";AlwaysOnButton.Content="Streaming Replication";PerformanceButton.Content="Performance / Indexes";}
-        else if(e==DatabaseEngine.Oracle){IncidentButton.Content="Long Transactions";BlockingButton.Content="Locks / Blocking";TempDbButton.Content="TEMP / UNDO";LogButton.Content="Redo / Archive";BackupJobsButton.Content="Backup / Scheduler";AlwaysOnButton.Content="Data Guard / HA";PerformanceButton.Content="Performance / SQL";}
-        else if(e==DatabaseEngine.MySqlMariaDb){IncidentButton.Content="Long Transactions";BlockingButton.Content="InnoDB Locks";TempDbButton.Content="Temp / InnoDB";LogButton.Content="Redo / Binlog";BackupJobsButton.Content="Backup / Events";AlwaysOnButton.Content="Replication";PerformanceButton.Content="Performance / Indexes";}
-        else {IncidentButton.Content="Long Transactions";BlockingButton.Content="Blocking Analyzer";TempDbButton.Content="TempDB / Version Store";LogButton.Content="Transaction Log";BackupJobsButton.Content="Backups / Jobs";AlwaysOnButton.Content="AlwaysOn / HA";PerformanceButton.Content="Performance";}
+        IncidentButton.Content=LocalizationService.T("Nav.LongTransactions"); BlockingButton.Content=LocalizationService.T("Nav.Blocking");
+        if(e==DatabaseEngine.PostgreSql){TempDbButton.Content=LocalizationService.T("Nav.TempPg");LogButton.Content=LocalizationService.T("Nav.LogPg");BackupJobsButton.Content=LocalizationService.T("Nav.BackupPg");AlwaysOnButton.Content=LocalizationService.T("Nav.HaPg");PerformanceButton.Content=LocalizationService.T("Nav.PerfPg");}
+        else if(e==DatabaseEngine.Oracle){TempDbButton.Content=LocalizationService.T("Nav.TempOracle");LogButton.Content=LocalizationService.T("Nav.LogOracle");BackupJobsButton.Content=LocalizationService.T("Nav.BackupOracle");AlwaysOnButton.Content=LocalizationService.T("Nav.HaOracle");PerformanceButton.Content=LocalizationService.T("Nav.PerfOracle");}
+        else if(e==DatabaseEngine.MySqlMariaDb){TempDbButton.Content=LocalizationService.T("Nav.TempMySql");LogButton.Content=LocalizationService.T("Nav.LogMySql");BackupJobsButton.Content=LocalizationService.T("Nav.BackupMySql");AlwaysOnButton.Content=LocalizationService.T("Nav.HaMySql");PerformanceButton.Content=LocalizationService.T("Nav.PerfMySql");}
+        else {TempDbButton.Content=LocalizationService.T("Nav.TempSql");LogButton.Content=LocalizationService.T("Nav.LogSql");BackupJobsButton.Content=LocalizationService.T("Nav.BackupSql");AlwaysOnButton.Content=LocalizationService.T("Nav.HaSql");PerformanceButton.Content=LocalizationService.T("Nav.PerfSql");}
     }
 
     private void HealthGrid_SelectionChanged(object sender,SelectionChangedEventArgs e){if(HealthGrid.SelectedItem is HealthItem item)DetailText.Text=$"{item.Status} | {item.Area}\n{item.Summary}\n\n{item.Detail}";}
