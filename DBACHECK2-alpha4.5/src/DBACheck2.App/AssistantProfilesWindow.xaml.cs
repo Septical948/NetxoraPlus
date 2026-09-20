@@ -16,6 +16,7 @@ public partial class AssistantProfilesWindow:Window
     public AssistantProfilesWindow(string currentHost)
     {
         InitializeComponent();
+        ApplyLanguage();
         HostBox.Text=currentHost;
         EngineBox.ItemsSource=Enum.GetValues<DatabaseEngine>();
         EngineBox.SelectedItem=DatabaseEngine.SqlServer;
@@ -24,7 +25,8 @@ public partial class AssistantProfilesWindow:Window
         Loaded+=async(_,__)=>{UpdateHints();await Refresh();};
     }
 
-    private void UpdateHints(){PortHint.Visibility=string.IsNullOrWhiteSpace(PortBox.Text)?Visibility.Visible:Visibility.Collapsed;DatabaseHint.Text=(EngineBox.SelectedItem is DatabaseEngine.Oracle)?"Service Name / SID":"Database";DatabaseHint.Visibility=string.IsNullOrWhiteSpace(DatabaseBox.Text)?Visibility.Visible:Visibility.Collapsed;UsernameHint.Visibility=string.IsNullOrWhiteSpace(UsernameBox.Text)?Visibility.Visible:Visibility.Collapsed;}
+    private void ApplyLanguage(){TitleText.Text=LocalizationService.T("Profiles.Title");SubtitleText.Text=$"Beta 1 · Multi-engine · {LocalizationService.T("Common.ReadOnly")}";SaveButton.Content=LocalizationService.T("Profiles.Save");LoadButton.Content=LocalizationService.T("Profiles.Load");UseButton.Content=LocalizationService.T("Profiles.Use");TestProfileButton.Content=LocalizationService.T("Profiles.Test");AskButton.Content=LocalizationService.T("Profiles.Ask");QuestionBox.Text=LocalizationService.T("Profiles.Question");PasswordHint.Text=LocalizationService.T("Profiles.PasswordRuntime");}
+    private void UpdateHints(){PortHint.Visibility=string.IsNullOrWhiteSpace(PortBox.Text)?Visibility.Visible:Visibility.Collapsed;DatabaseHint.Text=(EngineBox.SelectedItem is DatabaseEngine.Oracle)?LocalizationService.T("Profiles.ServiceSid"):"Database";DatabaseHint.Visibility=string.IsNullOrWhiteSpace(DatabaseBox.Text)?Visibility.Visible:Visibility.Collapsed;UsernameHint.Visibility=string.IsNullOrWhiteSpace(UsernameBox.Text)?Visibility.Visible:Visibility.Collapsed;}
 
     private void PasswordBox_PasswordChanged(object s,RoutedEventArgs e)=>PasswordHint.Visibility=string.IsNullOrEmpty(PasswordBox.Password)?Visibility.Visible:Visibility.Collapsed;
 
@@ -40,7 +42,7 @@ public partial class AssistantProfilesWindow:Window
     private async void Save_Click(object s,RoutedEventArgs e)
     {
         var p=Current();
-        if(string.IsNullOrWhiteSpace(p.Name)||string.IsNullOrWhiteSpace(p.Host)){OutputText.Text="Nombre y Host son obligatorios.";return;}
+        if(string.IsNullOrWhiteSpace(p.Name)||string.IsNullOrWhiteSpace(p.Host)){OutputText.Text=LocalizationService.T("Profiles.Required");return;}
         _items.RemoveAll(x=>x.Name.Equals(p.Name,StringComparison.OrdinalIgnoreCase));_items.Add(p);
         await _profiles.SaveAsync(_items);await Refresh();ProfilesBox.SelectedItem=_items.FirstOrDefault(x=>x.Name==p.Name);
     }
@@ -52,11 +54,11 @@ public partial class AssistantProfilesWindow:Window
     private void UseProfile_Click(object s,RoutedEventArgs e)
     {
         var p=Current();
-        if(string.IsNullOrWhiteSpace(p.Host)){OutputText.Text="Host obligatorio.";return;}
+        if(string.IsNullOrWhiteSpace(p.Host)){OutputText.Text=LocalizationService.T("Profiles.HostRequired");return;}
         ProfileActivated?.Invoke(p);
-        OutputText.Text=$"PERFIL GLOBAL ACTIVO\n{p.Display}\n\nEl contexto superior de DBACHECK fue actualizado.";
+        OutputText.Text=$"{LocalizationService.T("Profiles.GlobalActive")}\n{p.Display}\n\n{LocalizationService.T("Profiles.ContextUpdated")}";
     }
 
-    private async void Test_Click(object s,RoutedEventArgs e){try{OutputText.Text="Probando conexión...";OutputText.Text=await DatabaseProviderFactory.Create(Current()).TestAsync();}catch(Exception ex){OutputText.Text=$"ERROR: {ex.Message}";}}
-    private async void Ask_Click(object s,RoutedEventArgs e){try{OutputText.Text="Recolectando evidencia...";OutputText.Text=await _assistant.AskAsync(Current(),QuestionBox.Text);}catch(Exception ex){OutputText.Text=$"ERROR: {ex.Message}";}}
+    private async void Test_Click(object s,RoutedEventArgs e){try{OutputText.Text=LocalizationService.T("Profiles.Testing");OutputText.Text=await DatabaseProviderFactory.Create(Current()).TestAsync();}catch(Exception ex){OutputText.Text=$"ERROR: {ex.Message}";}}
+    private async void Ask_Click(object s,RoutedEventArgs e){try{OutputText.Text=LocalizationService.T("Profiles.Collecting");OutputText.Text=await _assistant.AskAsync(Current(),QuestionBox.Text);}catch(Exception ex){OutputText.Text=$"ERROR: {ex.Message}";}}
 }
