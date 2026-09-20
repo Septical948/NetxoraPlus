@@ -5,7 +5,7 @@ namespace DBACheck2.App.Providers;
 public sealed class OracleProvider:IDatabaseProvider
 {
  readonly ServerProfile p; readonly string cs;
- public OracleProvider(ServerProfile p){this.p=p;var port=p.Port??1521;var svc=string.IsNullOrWhiteSpace(p.DatabaseOrService)?"ORCL":p.DatabaseOrService;cs=$"User Id={p.Username};Password={p.Password};Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST={p.Host})(PORT={port}))(CONNECT_DATA=(SERVICE_NAME={svc})));Connection Timeout=8;";}
+ public OracleProvider(ServerProfile p){this.p=p;var port=p.Port??1521;var svc=string.IsNullOrWhiteSpace(p.DatabaseOrService)?"ORCL":p.DatabaseOrService;cs=$"User Id={p.Username};Password={p.Password};Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST={p.Host})(PORT={port}))(CONNECT_DATA=(SID={svc})));Connection Timeout=8;";}
  public DatabaseEngine Engine=>DatabaseEngine.Oracle; public string DisplayName=>"Oracle";
  public async Task<string> TestAsync(){await using var c=new OracleConnection(cs);await c.OpenAsync();await using var cmd=c.CreateCommand();cmd.CommandText="select banner from v$version where rownum=1";return Convert.ToString(await cmd.ExecuteScalarAsync())??"Oracle conectado";}
  public async Task<List<HealthItem>> QuickCheckAsync(){var x=new List<HealthItem>();await using var c=new OracleConnection(cs);await c.OpenAsync();
