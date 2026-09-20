@@ -55,12 +55,7 @@ SELECT CASE WHEN COUNT(*)>=100 THEN 'WARNING' ELSE 'OK' END,
        'active='||SUM(CASE WHEN state='active' THEN 1 ELSE 0 END)||', idle='||SUM(CASE WHEN state='idle' THEN 1 ELSE 0 END)
 FROM pg_stat_activity;"));
 
-        result.Add(await ScalarCheck(cn,"BLOCKING",@"
-SELECT CASE WHEN COUNT(*)>0 THEN 'WARNING' ELSE 'OK' END,
-       COUNT(*)||' sesión(es) esperando lock',
-       COALESCE(string_agg('pid '||a.pid||' wait='||COALESCE(a.wait_event_type,'lock'), '; '),'')
-FROM pg_stat_activity a
-WHERE a.wait_event_type='Lock';"));
+        result.Add(await BlockingCheck(cn));
 
         result.Add(await ScalarCheck(cn,"TRANSACTIONS",@"
 SELECT CASE WHEN COUNT(*)>0 THEN 'WARNING' ELSE 'OK' END,
@@ -94,6 +89,23 @@ FROM pg_stat_replication;"));
             await using var r=await cmd.ExecuteReaderAsync(); await r.ReadAsync();
             return new HealthItem { Area=area, Status=Convert.ToString(r.GetValue(0))??"INFO", Summary=Convert.ToString(r.GetValue(1))??"", Detail=Convert.ToString(r.GetValue(2))??"" };
         } catch(Exception ex) { return new HealthItem {Area=area,Status="ERROR",Summary="Collector PostgreSQL no disponible",Detail=ex.Message}; }
+    }
+
+    private static async Task<HealthItem> BlockingCheck(NpgsqlConnection cn)
+    {
+        var version=cn.PostgreSqlVersion;
+        string sql=version.Major>=9 && version.Minor>=6 || version.Major>=10
+            ? @"SELECT CASE WHEN COUNT(*)>0 THEN 'WARNING' ELSE 'OK' END,
+       COUNT(*)||' sesión(es) esperando lock',
+       COALESCE(string_agg('pid '||a.pid||' wait='||COALESCE(a.wait_event_type,'Lock'), '; '),'')
+FROM pg_stat_activity a
+WHERE a.wait_event_type='Lock';"
+            : @"SELECT CASE WHEN COUNT(*)>0 THEN 'WARNING' ELSE 'OK' END,
+       COUNT(*)||' sesión(es) esperando lock',
+       COALESCE(string_agg('pid '||a.pid||' waiting='||a.waiting::text, '; '),'')
+FROM pg_stat_activity a
+WHERE a.waiting;";
+        return await ScalarCheck(cn,"BLOCKING",sql);
     }
 
     private static async Task<HealthItem> WalCheck(NpgsqlConnection cn)
