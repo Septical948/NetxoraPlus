@@ -6,7 +6,7 @@ namespace DBACheck2.App.Services;
 
 public sealed class DbaAssistantService
 {
-    private enum Intent { General, Log, Backup, Blocking, Transactions, TempDb, Performance, Ha, Jobs }
+    private enum Intent { General, Log, Backup, Blocking, Transactions, TempDb, Performance, Ha, Jobs, Capacity, Vacuum }
 
     public async Task<string> AskAsync(ServerProfile profile,string question)
     {
@@ -53,6 +53,8 @@ public sealed class DbaAssistantService
     private static Intent DetectIntent(string question)
     {
         var q=question.ToLowerInvariant();
+        if((q.Contains("base")||q.Contains("database"))&&(q.Contains("grande")||q.Contains("mayor")||q.Contains("tamaño")||q.Contains("size")||q.Contains("espacio")||q.Contains("uso"))) return Intent.Capacity;
+        if(q.Contains("vacuum")||q.Contains("autovacuum")||q.Contains("bloat")||q.Contains("dead tuple")||q.Contains("xid")) return Intent.Vacuum;
         if(q.Contains("tempdb")||q.Contains("version store")||q.Contains("temporal")) return Intent.TempDb;
         if(q.Contains("bloq")||q.Contains("blocking")||q.Contains("lock")||q.Contains("deadlock")) return Intent.Blocking;
         if(q.Contains("transacci")||q.Contains("transaction")) return Intent.Transactions;
@@ -75,6 +77,8 @@ public sealed class DbaAssistantService
             Intent.Performance => new[]{"WAITS","BLOCKING","TRANSACTIONS","SESSIONS","LONG QUERIES"},
             Intent.Ha => new[]{"ALWAYSON","REPLICATION","ARCHIVELOG"},
             Intent.Jobs => new[]{"JOBS"},
+            Intent.Capacity => new[]{"DATABASE SIZE","TABLESPACE","DISK"},
+            Intent.Vacuum => new[]{"VACUUM","TEMP USAGE","TRANSACTIONS"},
             _ => Array.Empty<string>()
         };
         var source=all.ToList();
@@ -84,7 +88,7 @@ public sealed class DbaAssistantService
 
     private static bool IsAlert(HealthItem x)=>x.Status is "WARNING" or "CRITICAL" or "ERROR";
     private static int SeverityRank(HealthItem x)=>x.Status switch{"CRITICAL"=>4,"ERROR"=>3,"WARNING"=>2,"INFO"=>1,_=>0};
-    private static string IntentLabel(Intent x)=>x switch{Intent.Log=>"TRANSACTION LOG",Intent.Backup=>"BACKUPS",Intent.Blocking=>"BLOCKING",Intent.Transactions=>"TRANSACTIONS",Intent.TempDb=>"TEMPDB / VERSION STORE",Intent.Performance=>"PERFORMANCE",Intent.Ha=>"HA / ALWAYSON",Intent.Jobs=>"SQL AGENT JOBS",_=>"GENERAL HEALTH"};
+    private static string IntentLabel(Intent x)=>x switch{Intent.Log=>"TRANSACTION LOG",Intent.Backup=>"BACKUPS",Intent.Blocking=>"BLOCKING",Intent.Transactions=>"TRANSACTIONS",Intent.TempDb=>"TEMPDB / VERSION STORE",Intent.Performance=>"PERFORMANCE",Intent.Ha=>"HA / ALWAYSON",Intent.Jobs=>"JOBS / MAINTENANCE",Intent.Capacity=>"CAPACITY / DATABASE SIZE",Intent.Vacuum=>"VACUUM / MAINTENANCE",_=>"GENERAL HEALTH"};
 
     private static string CauseFor(HealthItem x)=>x.Area switch {
         "LOG"=>"Uso elevado o condición de reutilización del transaction log. Correlacionar log_reuse_wait_desc antes de concluir causa.",
