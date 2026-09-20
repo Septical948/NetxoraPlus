@@ -17,13 +17,6 @@ public sealed class DbaAssistantService
         sb.AppendLine($"Target: {profile.Host} | Environment: {profile.Environment}");
         sb.AppendLine();
 
-        if(profile.Engine is DatabaseEngine.Oracle or DatabaseEngine.MySqlMariaDb)
-        {
-            sb.AppendLine($"Provider {provider.DisplayName}: estructura multi-engine disponible; collectors específicos aún no habilitados.");
-            sb.AppendLine("No se ejecutó ninguna consulta contra el motor.");
-            return sb.ToString();
-        }
-
         var intent=DetectIntent(question);
         var health=await provider.QuickCheckAsync();
         var rows=Route(health,intent).ToList();
@@ -74,13 +67,13 @@ public sealed class DbaAssistantService
     private static IEnumerable<HealthItem> Route(IEnumerable<HealthItem> all,Intent intent)
     {
         var areas=intent switch {
-            Intent.Log => new[]{"LOG","WAL"},
+            Intent.Log => new[]{"LOG","WAL","ARCHIVELOG"},
             Intent.Backup => new[]{"BACKUPS"},
             Intent.Blocking => new[]{"BLOCKING"},
             Intent.Transactions => new[]{"TRANSACTIONS","BLOCKING"},
             Intent.TempDb => new[]{"TEMPDB","VERSION STORE","TRANSACTIONS"},
-            Intent.Performance => new[]{"WAITS","BLOCKING","TRANSACTIONS"},
-            Intent.Ha => new[]{"ALWAYSON","REPLICATION"},
+            Intent.Performance => new[]{"WAITS","BLOCKING","TRANSACTIONS","SESSIONS","LONG QUERIES"},
+            Intent.Ha => new[]{"ALWAYSON","REPLICATION","ARCHIVELOG"},
             Intent.Jobs => new[]{"JOBS"},
             _ => Array.Empty<string>()
         };
