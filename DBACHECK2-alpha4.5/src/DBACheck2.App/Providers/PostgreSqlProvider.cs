@@ -79,6 +79,17 @@ SELECT CASE WHEN pg_is_in_recovery() THEN 'INFO' WHEN COUNT(*)>0 THEN 'OK' ELSE 
 FROM pg_stat_replication;"));
 
         result.Add(await WalCheck(cn));
+        result.Add(await ScalarCheck(cn,"VACUUM",@"
+SELECT CASE WHEN COALESCE(MAX(age(datfrozenxid)),0)>1500000000 THEN 'WARNING' ELSE 'OK' END,
+       'XID age máximo: '||COALESCE(MAX(age(datfrozenxid)),0),
+       COALESCE(string_agg(datname||'='||age(datfrozenxid), '; '),'')
+FROM pg_database WHERE datallowconn;"));
+        if(cn.PostgreSqlVersion.Major>=9 && (cn.PostgreSqlVersion.Major>9 || cn.PostgreSqlVersion.Minor>=4))
+            result.Add(await ScalarCheck(cn,"TEMP USAGE",@"
+SELECT CASE WHEN COALESCE(SUM(temp_bytes),0)>10737418240 THEN 'WARNING' ELSE 'OK' END,
+       pg_size_pretty(COALESCE(SUM(temp_bytes),0))||' temp acumulado desde stats reset',
+       COALESCE(string_agg(datname||'='||pg_size_pretty(temp_bytes), '; '),'')
+FROM pg_stat_database;"));
         return result;
     }
 
