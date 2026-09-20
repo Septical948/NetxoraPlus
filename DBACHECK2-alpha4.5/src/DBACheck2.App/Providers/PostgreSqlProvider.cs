@@ -43,6 +43,10 @@ public sealed class PostgreSqlProvider : IDatabaseProvider
         await using var cn=new NpgsqlConnection(_connectionString);
         await cn.OpenAsync();
 
+        var version=cn.PostgreSqlVersion;
+        var recovery=await IsRecovery(cn);
+        result.Add(new HealthItem{Area="ENGINE",Status="INFO",Summary=$"PostgreSQL {version}",Detail=$"Role: {(recovery?"Standby":"Primary")} | Database: {_profile.DatabaseOrService} | User: {_profile.Username}"});
+
         result.Add(await ScalarCheck(cn,"DATABASES",@"
 SELECT CASE WHEN COUNT(*)>0 THEN 'WARNING' ELSE 'OK' END,
        COUNT(*)||' database(s) sin permitir conexiones',
@@ -70,13 +74,7 @@ SELECT 'OK',
        COALESCE(string_agg(datname||'='||pg_size_pretty(pg_database_size(datname)), '; '),'')
 FROM pg_database WHERE datallowconn;"));
 
-        result.Add(await ScalarCheck(cn,"REPLICATION",@"
-SELECT CASE WHEN pg_is_in_recovery() THEN 'INFO' WHEN COUNT(*)>0 THEN 'OK' ELSE 'INFO' END,
-       CASE WHEN pg_is_in_recovery() THEN 'Servidor en recovery/standby'
-            WHEN COUNT(*)>0 THEN COUNT(*)||' réplica(s) conectada(s)'
-            ELSE 'Primary sin réplicas streaming visibles' END,
-       COALESCE(string_agg(COALESCE(client_addr::text,'local')||' '||COALESCE(state,''), '; '),'')
-FROM pg_stat_replication;"));
+        result.Add(await ReplicationCheck(cn,recovery));
 
         result.Add(await WalCheck(cn));
         result.Add(await ScalarCheck(cn,"VACUUM",@"
@@ -99,7 +97,7 @@ FROM pg_stat_database;"));
             await using var cmd=new NpgsqlCommand(sql,cn){CommandTimeout=15};
             await using var r=await cmd.ExecuteReaderAsync(); await r.ReadAsync();
             return new HealthItem { Area=area, Status=Convert.ToString(r.GetValue(0))??"INFO", Summary=Convert.ToString(r.GetValue(1))??"", Detail=Convert.ToString(r.GetValue(2))??"" };
-        } catch(Exception ex) { return new HealthItem {Area=area,Status="ERROR",Summary="Collector PostgreSQL no disponible",Detail=ex.Message}; }
+        } catch(Exception ex) { return Classify(area,ex); }
     }
 
     private static async Task<HealthItem> BlockingCheck(NpgsqlConnection cn)
@@ -119,6 +117,25 @@ WHERE a.waiting;";
         return await ScalarCheck(cn,"BLOCKING",sql);
     }
 
+    private static async Task<HealthItem> ReplicationCheck(NpgsqlConnection cn,bool recovery)
+    {
+        if(recovery) return new HealthItem{Area="REPLICATION",Status="INFO",Summary="Standby / recovery",Detail="pg_is_in_recovery() = true"};
+        try {
+            return await ScalarCheck(cn,"REPLICATION",@"SELECT CASE WHEN COUNT(*)>0 THEN 'OK' ELSE 'INFO' END,
+COUNT(*)||' streaming replica(s)',COALESCE(string_agg(COALESCE(client_addr::text,'local')||' '||COALESCE(state,''), '; '),'') FROM pg_stat_replication;");
+        } catch(Exception ex){return Classify("REPLICATION",ex);}
+    }
+
+    private static HealthItem Classify(string area,Exception ex)
+    {
+        if(ex is PostgresException pg)
+        {
+            if(pg.SqlState=="42501") return new(){Area=area,Status="NO PERMISSION",Summary="Insufficient privileges",Detail=pg.MessageText};
+            if(pg.SqlState=="42703"||pg.SqlState=="42883"||pg.SqlState=="42P01") return new(){Area=area,Status="UNSUPPORTED",Summary="Feature not available for this PostgreSQL version",Detail=pg.MessageText};
+        }
+        return new(){Area=area,Status="ERROR",Summary="PostgreSQL collector failed",Detail=ex.Message};
+    }
+
     private static async Task<HealthItem> WalCheck(NpgsqlConnection cn)
     {
         try {
@@ -131,7 +148,7 @@ WHERE a.waiting;";
                     ? @"SELECT 'INFO','Standby WAL replay', pg_last_wal_replay_lsn()::text;"
                     : @"SELECT 'INFO','Standby XLOG replay', pg_last_xlog_replay_location()::text;";
             return await ScalarCheck(cn,"WAL",sql);
-        } catch(Exception ex) { return new HealthItem {Area="WAL",Status="ERROR",Summary="No se pudo obtener estado WAL",Detail=ex.Message}; }
+        } catch(Exception ex) { return Classify("WAL",ex); }
     }
 
     private static async Task<bool> IsRecovery(NpgsqlConnection cn)
