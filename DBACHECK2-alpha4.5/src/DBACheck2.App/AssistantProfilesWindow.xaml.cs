@@ -26,7 +26,9 @@ public partial class AssistantProfilesWindow:Window
 
     private void UpdateHints(){PortHint.Visibility=string.IsNullOrWhiteSpace(PortBox.Text)?Visibility.Visible:Visibility.Collapsed;DatabaseHint.Text=(EngineBox.SelectedItem is DatabaseEngine.Oracle)?"Service Name / SID":"Database";DatabaseHint.Visibility=string.IsNullOrWhiteSpace(DatabaseBox.Text)?Visibility.Visible:Visibility.Collapsed;UsernameHint.Visibility=string.IsNullOrWhiteSpace(UsernameBox.Text)?Visibility.Visible:Visibility.Collapsed;}
 
-    private ServerProfile Current()=>new(){Name=ProfileName.Text.Trim(),Engine=(DatabaseEngine)(EngineBox.SelectedItem??DatabaseEngine.SqlServer),Host=HostBox.Text.Trim(),Port=int.TryParse(PortBox.Text,out var p)?p:null,DatabaseOrService=DatabaseBox.Text.Trim(),Username=UsernameBox.Text.Trim(),Environment="PROD",Authentication=(DatabaseEngine)(EngineBox.SelectedItem??DatabaseEngine.SqlServer)==DatabaseEngine.SqlServer?"Windows":"Database",TrustCertificate=true};
+    private void PasswordBox_PasswordChanged(object s,RoutedEventArgs e)=>PasswordHint.Visibility=string.IsNullOrEmpty(PasswordBox.Password)?Visibility.Visible:Visibility.Collapsed;
+
+    private ServerProfile Current()=>new(){Name=ProfileName.Text.Trim(),Engine=(DatabaseEngine)(EngineBox.SelectedItem??DatabaseEngine.SqlServer),Host=HostBox.Text.Trim(),Port=int.TryParse(PortBox.Text,out var p)?p:null,DatabaseOrService=DatabaseBox.Text.Trim(),Username=UsernameBox.Text.Trim(),Password=PasswordBox.Password,Environment="PROD",Authentication=(DatabaseEngine)(EngineBox.SelectedItem??DatabaseEngine.SqlServer)==DatabaseEngine.SqlServer?"Windows":"Database",TrustCertificate=true};
 
     private async Task Refresh()
     {
@@ -45,7 +47,7 @@ public partial class AssistantProfilesWindow:Window
 
     private void Load_Click(object s,RoutedEventArgs e){if(ProfilesBox.SelectedItem is ServerProfile p)Apply(p);}
     private void ProfilesBox_SelectionChanged(object s,SelectionChangedEventArgs e){if(ProfilesBox.SelectedItem is ServerProfile p)Apply(p);}
-    private void Apply(ServerProfile p){ProfileName.Text=p.Name;EngineBox.SelectedItem=p.Engine;HostBox.Text=p.Host;PortBox.Text=p.Port?.ToString()??"";DatabaseBox.Text=p.DatabaseOrService;UsernameBox.Text=p.Username??"";}
+    private void Apply(ServerProfile p){ProfileName.Text=p.Name;EngineBox.SelectedItem=p.Engine;HostBox.Text=p.Host;PortBox.Text=p.Port?.ToString()??"";DatabaseBox.Text=p.DatabaseOrService;UsernameBox.Text=p.Username??"";PasswordBox.Clear();}
 
     private void UseProfile_Click(object s,RoutedEventArgs e)
     {
