@@ -19,8 +19,12 @@ public partial class AssistantProfilesWindow:Window
         HostBox.Text=currentHost;
         EngineBox.ItemsSource=Enum.GetValues<DatabaseEngine>();
         EngineBox.SelectedItem=DatabaseEngine.SqlServer;
-        Loaded+=async(_,__)=>await Refresh();
+        PortBox.TextChanged+=(_,__)=>UpdateHints(); DatabaseBox.TextChanged+=(_,__)=>UpdateHints(); UsernameBox.TextChanged+=(_,__)=>UpdateHints();
+        EngineBox.SelectionChanged+=(_,__)=>UpdateHints();
+        Loaded+=async(_,__)=>{UpdateHints();await Refresh();};
     }
+
+    private void UpdateHints(){PortHint.Visibility=string.IsNullOrWhiteSpace(PortBox.Text)?Visibility.Visible:Visibility.Collapsed;DatabaseHint.Text=(EngineBox.SelectedItem is DatabaseEngine.Oracle)?"Service Name / SID":"Database";DatabaseHint.Visibility=string.IsNullOrWhiteSpace(DatabaseBox.Text)?Visibility.Visible:Visibility.Collapsed;UsernameHint.Visibility=string.IsNullOrWhiteSpace(UsernameBox.Text)?Visibility.Visible:Visibility.Collapsed;}
 
     private ServerProfile Current()=>new(){Name=ProfileName.Text.Trim(),Engine=(DatabaseEngine)(EngineBox.SelectedItem??DatabaseEngine.SqlServer),Host=HostBox.Text.Trim(),Port=int.TryParse(PortBox.Text,out var p)?p:null,DatabaseOrService=DatabaseBox.Text.Trim(),Username=UsernameBox.Text.Trim(),Environment="PROD",Authentication=(DatabaseEngine)(EngineBox.SelectedItem??DatabaseEngine.SqlServer)==DatabaseEngine.SqlServer?"Windows":"Database",TrustCertificate=true};
 
