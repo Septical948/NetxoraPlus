@@ -87,7 +87,7 @@ public sealed class DbaAssistantService
     }
 
     private static bool IsAlert(HealthItem x)=>x.Status is "WARNING" or "CRITICAL" or "ERROR";
-    private static int SeverityRank(HealthItem x)=>x.Status switch{"CRITICAL"=>4,"ERROR"=>3,"WARNING"=>2,"INFO"=>1,_=>0};
+    private static int SeverityRank(HealthItem x)=>x.Status switch{"CRITICAL"=>6,"ERROR"=>5,"WARNING"=>4,"NO PERMISSION"=>3,"NOT ENABLED"=>2,"UNSUPPORTED"=>2,"UNAVAILABLE"=>2,"INFO"=>1,_=>0};
     private static string IntentLabel(Intent x)=>x switch{Intent.Log=>"TRANSACTION LOG",Intent.Backup=>"BACKUPS",Intent.Blocking=>"BLOCKING",Intent.Transactions=>"TRANSACTIONS",Intent.TempDb=>"TEMPDB / VERSION STORE",Intent.Performance=>"PERFORMANCE",Intent.Ha=>"HA / ALWAYSON",Intent.Jobs=>"JOBS / MAINTENANCE",Intent.Capacity=>"CAPACITY / DATABASE SIZE",Intent.Vacuum=>"VACUUM / MAINTENANCE",_=>"GENERAL HEALTH"};
 
     private static string CauseFor(HealthItem x)=>x.Area switch {
