@@ -10,7 +10,6 @@ public partial class AssistantProfilesWindow:Window
 {
     private readonly ServerProfileService _profiles=new();
     private List<ServerProfile> _items=new();
-    public event Action<ServerProfile>? ProfileActivated;
     public event Action<ServerProfile>? ConnectRequested;
 
     public AssistantProfilesWindow(string currentHost)
