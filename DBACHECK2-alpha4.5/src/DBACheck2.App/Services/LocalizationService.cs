@@ -14,7 +14,7 @@ public static class LocalizationService
     private static readonly Dictionary<string,(string Es,string En)> S=new(StringComparer.OrdinalIgnoreCase)
     {
         ["App.Subtitle"]=("Beta 1 · Plataforma DBA Multi-Engine","Beta 1 · Multi-Engine DBA Platform"),
-        ["Connection.Target"]=("DESTINO / PERFIL","TARGET / PROFILE"), ["Connection.Test"]=("PROBAR CONEXIÓN","TEST CONNECTION"),
+        ["Connection.Engine"]=("MOTOR","ENGINE"), ["Connection.Target"]=("DESTINO / PERFIL","TARGET / PROFILE"), ["Connection.Test"]=("PROBAR CONEXIÓN","TEST CONNECTION"),
         ["Connection.Unverified"]=("NO VERIFICADA","NOT VERIFIED"), ["Connection.Trust"]=("Confiar certificado","Trust certificate"),
         ["Nav.Operation"]=("OPERACIÓN","OPERATIONS"), ["Nav.Quick"]=("Chequeo rápido","Quick Check"),
         ["Nav.LongTransactions"]=("Transacciones largas","Long Transactions"), ["Nav.Blocking"]=("Bloqueos","Blocking"),
@@ -25,9 +25,9 @@ public static class LocalizationService
         ["Nav.HaSql"]=("AlwaysOn / HA","AlwaysOn / HA"), ["Nav.HaPg"]=("Replicación Streaming","Streaming Replication"), ["Nav.HaOracle"]=("Data Guard / HA","Data Guard / HA"), ["Nav.HaMySql"]=("Replicación","Replication"),
         ["Nav.PerfSql"]=("Rendimiento","Performance"), ["Nav.PerfPg"]=("Rendimiento / Índices","Performance / Indexes"), ["Nav.PerfOracle"]=("Rendimiento / SQL","Performance / SQL"), ["Nav.PerfMySql"]=("Rendimiento / Índices","Performance / Indexes"),
         ["Nav.History"]=("Historial de incidentes","Incident History"), ["Nav.Operations"]=("Operaciones de incidentes","Incident Operations"), ["Nav.Assistant"]=("Asistente DBA / Perfiles","DBA Assistant / Profiles"),
-        ["Context.Current"]=("CONTEXTO ACTUAL","CURRENT CONTEXT"), ["Context.WindowsAuth"]=("Autenticación Windows","Windows Authentication"),
+        ["Context.Current"]=("CONTEXTO ACTUAL","CURRENT CONTEXT"), ["Context.WindowsAuth"]=("Autenticación Windows","Windows Authentication"), ["Context.ProfileRequired"]=("Seleccioná o creá un perfil para credenciales","Select or create a profile for credentials"),
         ["Quick.Title"]=("CHEQUEO RÁPIDO","QUICK CHECK"), ["Quick.Subtitle"]=("Estado operativo del destino seleccionado. Solo lectura.","Operational status of the selected target. Read-only."),
-        ["Quick.Ready"]=("Listo. Seleccioná el destino / perfil y ejecutá el chequeo rápido.","Ready. Select the target / profile and run Quick Check."),
+        ["Quick.Ready"]=("Listo. Seleccioná el destino / perfil y ejecutá el chequeo rápido.","Ready. Select the target / profile and run Quick Check."), ["Quick.SelectEvidence"]=("Seleccioná una fila para ver la evidencia completa.","Select a row to view the complete evidence."),
         ["Grid.Status"]=("Estado","Status"), ["Grid.Area"]=("Área","Area"), ["Grid.Summary"]=("Resumen","Summary"), ["Grid.Evidence"]=("Evidencia / detalle","Evidence / detail"),
         ["Grid.EvidenceTitle"]=("EVIDENCIA DEL CHECK SELECCIONADO","SELECTED CHECK EVIDENCE"),
         ["Common.ReadOnly"]=("Solo lectura","Read-only"), ["Language.Label"]=("IDIOMA","LANGUAGE"),
