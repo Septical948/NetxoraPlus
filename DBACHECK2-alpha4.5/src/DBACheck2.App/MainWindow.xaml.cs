@@ -73,9 +73,21 @@ public partial class MainWindow : Window
             }
             HealthGrid.ItemsSource=data;
             var critical=data.Count(x=>x.Status=="CRITICAL"); var warnings=data.Count(x=>x.Status=="WARNING"); var errors=data.Count(x=>x.Status=="ERROR"); var ok=data.Count(x=>x.Status=="OK");
+            UpdateInsights(data,engineInfo);
             StatusText.Text=$"Destino: {ServerBox.Text.Trim()} | {engineInfo} | {sw.Elapsed.TotalSeconds:0.0}s | {data.Count} áreas | OK {ok} | Warning {warnings} | Critical {critical} | Error {errors}";
         } catch(Exception ex) { StatusText.Text=$"✗ Destino: {ServerBox.Text.Trim()} | Quick Check: {ex.Message}"; }
         finally { sw.Stop(); SetBusy(false); }
+    }
+
+    private void UpdateInsights(List<HealthItem> data,string engineInfo)
+    {
+        var alerts=data.Where(x=>x.Status is "CRITICAL" or "ERROR" or "WARNING").OrderByDescending(x=>x.Severity).ToList();
+        var critical=data.Count(x=>x.Status=="CRITICAL"); var errors=data.Count(x=>x.Status=="ERROR"); var warnings=data.Count(x=>x.Status=="WARNING");
+        InsightHealthValue.Text=critical+errors>0?(LocalizationService.Current==AppLanguage.En?"ATTENTION":"ATENCIÓN"):warnings>0?(LocalizationService.Current==AppLanguage.En?"WARNING":"ADVERTENCIA"):"OK";
+        InsightHealthValue.Foreground=(Brush)new BrushConverter().ConvertFromString(critical+errors>0?"#FF6B7A":warnings>0?"#F0B45A":"#38E8D0")!;
+        InsightAlertValue.Text=$"{critical} critical · {warnings} warning";
+        InsightTopValue.Text=alerts.Count==0?(LocalizationService.Current==AppLanguage.En?"No active findings":"Sin hallazgos activos"):$"{alerts[0].Area}: {alerts[0].Summary}";
+        InsightEngineValue.Text=engineInfo;
     }
 
     private void ShowQuickCheck(){ReleaseHostedAnalyzer();ModuleHost.Visibility=Visibility.Collapsed;QuickCheckView.Visibility=Visibility.Visible;}
@@ -141,7 +153,7 @@ public partial class MainWindow : Window
         OperationLabelText.Text=LocalizationService.T("Nav.Operation"); QuickButton.Content=LocalizationService.T("Nav.Quick");
         HistoryButton.Content=LocalizationService.T("Nav.History"); OperationsButton.Content=LocalizationService.T("Nav.Operations"); AssistantButton.Content=LocalizationService.T("Nav.Assistant");
         CurrentContextLabelText.Text=LocalizationService.T("Context.Current"); AuthenticationText.Text=LocalizationService.T("Context.WindowsAuth");
-        QuickTitleText.Text=LocalizationService.T("Quick.Title"); QuickSubtitleText.Text=LocalizationService.T("Quick.Subtitle"); StatusText.Text=LocalizationService.T("Quick.Ready"); DetailText.Text=LocalizationService.T("Quick.SelectEvidence");
+        QuickTitleText.Text=LocalizationService.T("Quick.Title"); QuickSubtitleText.Text=LocalizationService.T("Quick.Subtitle"); StatusText.Text=LocalizationService.T("Quick.Ready"); DetailText.Text=LocalizationService.T("Quick.SelectEvidence"); InsightHealthLabel.Text=LocalizationService.T("Insight.Health"); InsightAlertLabel.Text=LocalizationService.T("Insight.Alerts"); InsightTopLabel.Text=LocalizationService.T("Insight.Top"); InsightEngineLabel.Text=LocalizationService.T("Insight.Engine");
         StatusColumn.Header=LocalizationService.T("Grid.Status"); AreaColumn.Header=LocalizationService.T("Grid.Area"); SummaryColumn.Header=LocalizationService.T("Grid.Summary"); EvidenceColumn.Header=LocalizationService.T("Grid.Evidence");
         EvidenceTitleText.Text=LocalizationService.T("Grid.EvidenceTitle"); LanguageLabelText.Text=LocalizationService.T("Language.Label");
         FooterText.Text=$"DBACHECK 2 Beta 1 | Multi-engine | {LocalizationService.T("Common.ReadOnly")}";
