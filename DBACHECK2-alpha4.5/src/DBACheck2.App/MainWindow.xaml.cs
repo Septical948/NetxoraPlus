@@ -41,6 +41,7 @@ public partial class MainWindow : Window
     private async void TestButton_Click(object sender,RoutedEventArgs e)
     {
         if(!ValidateTarget()) return;
+        if(_activeEngine!=DatabaseEngine.SqlServer && (_activeProfile is null || _activeProfile.Engine!=_activeEngine)){StatusText.Text=LocalizationService.Current==AppLanguage.En?"Select a saved profile for the selected engine. Direct credential fields will be available in the global connector.":"Seleccioná un perfil guardado para el motor elegido. Las credenciales directas estarán disponibles en el conector global.";AssistantButton_Click(sender,e);return;}
         try {
             SetBusy(true,$"Probando conexión con {ServerBox.Text.Trim()}..."); SetConnectionState("CONECTANDO","#4A4120","#FFE69A");
             if(_activeProfile is not null && _activeProfile.Engine!=DatabaseEngine.SqlServer) {
@@ -59,7 +60,8 @@ public partial class MainWindow : Window
 
     private async void QuickButton_Click(object sender,RoutedEventArgs e)
     {
-        if(!ValidateTarget()) return; ShowQuickCheck(); var sw=Stopwatch.StartNew();
+        if(!ValidateTarget()) return;
+        if(_activeEngine!=DatabaseEngine.SqlServer && (_activeProfile is null || _activeProfile.Engine!=_activeEngine)){StatusText.Text=LocalizationService.Current==AppLanguage.En?"Activate a profile for the selected engine first.":"Primero activá un perfil para el motor seleccionado.";return;} ShowQuickCheck(); var sw=Stopwatch.StartNew();
         try {
             SetBusy(true,$"Ejecutando Quick Check en {ServerBox.Text.Trim()}...");
             List<HealthItem> data; string engineInfo;
