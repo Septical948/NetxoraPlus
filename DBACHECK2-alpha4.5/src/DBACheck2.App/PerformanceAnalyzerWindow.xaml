@@ -9,7 +9,7 @@
 </Window.Resources>
 <Grid Margin="12">
  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="230"/></Grid.RowDefinitions>
- <StackPanel><TextBlock Text="INCIDENT ANALYZER · PERFORMANCE" Foreground="#38E8D0" FontSize="26" FontWeight="Bold"/><TextBlock Text="Alpha 4.5 · Active Requests · CPU · I/O · Waits · Blocking · Memory Grants · Evidence · Read-only" Foreground="#B7C3D7"/></StackPanel>
+ <StackPanel><TextBlock Text="INCIDENT ANALYZER · PERFORMANCE" Foreground="#38E8D0" FontSize="26" FontWeight="Bold"/><TextBlock Text="Beta 1 · Active Requests · CPU · I/O · Waits · Blocking · Memory Grants · Evidence · Read-only" Foreground="#B7C3D7"/></StackPanel>
  <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,10">
   <Button x:Name="RefreshButton" Padding="16,8" Content="ACTUALIZAR" Click="RefreshButton_Click"/>
   <Button x:Name="DiagnosticButton" Margin="8,0,0,0" Padding="16,8" Content="DIAGNÓSTICO" Click="DiagnosticButton_Click" IsEnabled="False"/>
