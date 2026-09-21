@@ -19,7 +19,7 @@ public sealed class MySqlMariaDbProvider:IDatabaseProvider
  private async Task<T> WithConnection<T>(Func<MySqlConnection,Task<T>> work)
  {
   var tunnel=OpenTunnel();try{var host=tunnel is null?profile.Host:"127.0.0.1";var port=tunnel is null?(uint)(profile.Port??3306):tunnel.Value.Port.BoundPort;await using var c=new MySqlConnection(Cs(host,port));await c.OpenAsync();return await work(c);}finally{if(tunnel is not null){tunnel.Value.Port.Stop();tunnel.Value.Client.Disconnect();tunnel.Value.Port.Dispose();tunnel.Value.Client.Dispose();}}
- }}
+ }
  public DatabaseEngine Engine=>DatabaseEngine.MySqlMariaDb; public string DisplayName=>"MySQL / MariaDB";
  public Task<string> TestAsync()=>WithConnection(async c=>{await using var q=new MySqlCommand("select version(),database(),current_user()",c);await using var r=await q.ExecuteReaderAsync();await r.ReadAsync();return $"{r.GetString(0)}\nDatabase: {(r.IsDBNull(1)?"N/A":r.GetString(1))} | User: {r.GetString(2)}";});
  public Task<List<HealthItem>> QuickCheckAsync()=>WithConnection(async c=>{var x=new List<HealthItem>();
