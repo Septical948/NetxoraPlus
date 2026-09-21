@@ -109,7 +109,6 @@ public partial class MainWindow : Window
     private void AssistantButton_Click(object sender,RoutedEventArgs e)
     {
         var window=new AssistantProfilesWindow(ServerBox.Text.Trim());
-        window.ProfileActivated+=ActivateProfile;
         window.ConnectRequested+=async p=>await ConnectFromProfileAsync(window,p);
         HostAnalyzer(window);
     }
