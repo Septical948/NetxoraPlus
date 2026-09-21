@@ -9,7 +9,6 @@ namespace DBACheck2.App;
 public partial class AssistantProfilesWindow:Window
 {
     private readonly ServerProfileService _profiles=new();
-    private readonly DbaAssistantService _assistant=new();
     private List<ServerProfile> _items=new();
     public event Action<ServerProfile>? ProfileActivated;
 
@@ -25,7 +24,7 @@ public partial class AssistantProfilesWindow:Window
         Loaded+=async(_,__)=>{UpdateHints();await Refresh();};
     }
 
-    private void ApplyLanguage(){TitleText.Text=LocalizationService.T("Profiles.Title");SubtitleText.Text=$"Beta 1 · Multi-engine · {LocalizationService.T("Common.ReadOnly")}";SaveButton.Content=LocalizationService.T("Profiles.Save");LoadButton.Content=LocalizationService.T("Profiles.Load");UseButton.Content=LocalizationService.T("Profiles.Use");TestProfileButton.Content=LocalizationService.T("Profiles.Test");AskButton.Content=LocalizationService.T("Profiles.Ask");QuestionBox.Text=LocalizationService.T("Profiles.Question");PasswordHint.Text=LocalizationService.T("Profiles.PasswordRuntime");}
+    private void ApplyLanguage(){TitleText.Text=LocalizationService.T("Profiles.ConnectionTitle");SubtitleText.Text=$"Beta 1 · Multi-engine · {LocalizationService.T("Common.ReadOnly")}";SaveButton.Content=LocalizationService.T("Profiles.Save");LoadButton.Content=LocalizationService.T("Profiles.Load");UseButton.Content=LocalizationService.T("Profiles.Connect");TestProfileButton.Content=LocalizationService.T("Profiles.Test");PasswordHint.Text=LocalizationService.T("Profiles.PasswordRuntime");}
     private void UpdateHints(){PortHint.Visibility=string.IsNullOrWhiteSpace(PortBox.Text)?Visibility.Visible:Visibility.Collapsed;DatabaseHint.Text=(EngineBox.SelectedItem is DatabaseEngine.Oracle)?LocalizationService.T("Profiles.ServiceSid"):"Database";DatabaseHint.Visibility=string.IsNullOrWhiteSpace(DatabaseBox.Text)?Visibility.Visible:Visibility.Collapsed;UsernameHint.Visibility=string.IsNullOrWhiteSpace(UsernameBox.Text)?Visibility.Visible:Visibility.Collapsed;}
 
     private void PasswordBox_PasswordChanged(object s,RoutedEventArgs e)=>PasswordHint.Visibility=string.IsNullOrEmpty(PasswordBox.Password)?Visibility.Visible:Visibility.Collapsed;
@@ -60,5 +59,4 @@ public partial class AssistantProfilesWindow:Window
     }
 
     private async void Test_Click(object s,RoutedEventArgs e){try{OutputText.Text=LocalizationService.T("Profiles.Testing");OutputText.Text=await DatabaseProviderFactory.Create(Current()).TestAsync();}catch(Exception ex){OutputText.Text=$"ERROR: {ex.Message}";}}
-    private async void Ask_Click(object s,RoutedEventArgs e){try{OutputText.Text=LocalizationService.T("Profiles.Collecting");OutputText.Text=await _assistant.AskAsync(Current(),QuestionBox.Text);}catch(Exception ex){OutputText.Text=$"ERROR: {ex.Message}";}}
 }
