@@ -168,7 +168,7 @@ public partial class MainWindow : Window
         if(SubtitleText is null)return;
         SubtitleText.Text=LocalizationService.T("App.Subtitle"); EngineLabelText.Text=LocalizationService.T("Connection.Engine"); TargetLabelText.Text=LocalizationService.T("Connection.Target");
         TestButton.Content=LocalizationService.T("Connection.Test"); TrustCertBox.Content=LocalizationService.T("Connection.Trust");
-        OperationLabelText.Text=LocalizationService.T("Nav.Operation"); QuickButton.Content=LocalizationService.T("Nav.Quick");
+        OperationLabelText.Text=LocalizationService.T("Nav.Operation"); DiagnosticsLabelText.Text=LocalizationService.T("Nav.Diagnostics"); IncidentsLabelText.Text=LocalizationService.T("Nav.Incidents"); QuickButton.Content=LocalizationService.T("Nav.Quick");
         HistoryButton.Content=LocalizationService.T("Nav.History"); OperationsButton.Content=LocalizationService.T("Nav.Operations"); AssistantButton.Content=LocalizationService.T("Nav.Assistant");
         CurrentContextLabelText.Text=LocalizationService.T("Context.Current"); AuthenticationText.Text=LocalizationService.T("Context.WindowsAuth");
         QuickTitleText.Text=LocalizationService.T("Quick.Title"); QuickSubtitleText.Text=LocalizationService.T("Quick.Subtitle"); StatusText.Text=LocalizationService.T("Quick.Ready"); DetailText.Text=LocalizationService.T("Quick.SelectEvidence"); InsightHealthLabel.Text=LocalizationService.T("Insight.Health"); InsightAlertLabel.Text=LocalizationService.T("Insight.Alerts"); InsightTopLabel.Text=LocalizationService.T("Insight.Top"); InsightEngineLabel.Text=LocalizationService.T("Insight.Engine");
