@@ -22,6 +22,7 @@ public partial class MainWindow : Window
         GlobalEngineBox.SelectedItem=DatabaseEngine.SqlServer;
         LanguageBox.SelectedIndex=LocalizationService.Current==AppLanguage.Es?0:1;
         ApplyLanguage();
+        Loaded+=(_,__)=>AssistantButton_Click(this,new RoutedEventArgs());
         ServerBox.TextChanged += (_,__) => {
             TargetContextText.Text=string.IsNullOrWhiteSpace(ServerBox.Text)?"Sin destino":ServerBox.Text.Trim();
             SetConnectionState("NO VERIFICADA","#263244","#B7C3D7");
