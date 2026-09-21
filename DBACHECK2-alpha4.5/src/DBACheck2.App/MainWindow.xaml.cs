@@ -110,8 +110,25 @@ public partial class MainWindow : Window
     {
         var window=new AssistantProfilesWindow(ServerBox.Text.Trim());
         window.ProfileActivated+=ActivateProfile;
-        window.ConnectRequested+=_=>QuickButton_Click(this,new RoutedEventArgs());
+        window.ConnectRequested+=async p=>await ConnectFromProfileAsync(window,p);
         HostAnalyzer(window);
+    }
+
+    private async Task ConnectFromProfileAsync(AssistantProfilesWindow window,ServerProfile profile)
+    {
+        try
+        {
+            window.SetConnectionProgress(LocalizationService.T("Profiles.Testing"));
+            var provider=DatabaseProviderFactory.Create(profile);
+            var info=await provider.TestAsync();
+            ActivateProfile(profile);
+            window.SetConnectionSuccess($"{LocalizationService.T("Profiles.ConnectionOk")}\n{provider.DisplayName} | {info.Replace("\n"," | ")}");
+            QuickButton_Click(this,new RoutedEventArgs());
+        }
+        catch(Exception ex)
+        {
+            window.SetConnectionError($"{LocalizationService.T("Profiles.ConnectionFailed")}\n{ex.Message}");
+        }
     }
 
     private void ActivateProfile(ServerProfile profile)
@@ -164,10 +181,10 @@ public partial class MainWindow : Window
     private void ApplyEngineNavigation(DatabaseEngine e)
     {
         IncidentButton.Content=LocalizationService.T("Nav.LongTransactions"); BlockingButton.Content=LocalizationService.T("Nav.Blocking");
-        if(e==DatabaseEngine.PostgreSql){TempDbButton.Content=LocalizationService.T("Nav.TempPg");LogButton.Content=LocalizationService.T("Nav.LogPg");BackupJobsButton.Content=LocalizationService.T("Nav.BackupPg");AlwaysOnButton.Content=LocalizationService.T("Nav.HaPg");PerformanceButton.Content=LocalizationService.T("Nav.PerfPg");}
-        else if(e==DatabaseEngine.Oracle){TempDbButton.Content=LocalizationService.T("Nav.TempOracle");LogButton.Content=LocalizationService.T("Nav.LogOracle");BackupJobsButton.Content=LocalizationService.T("Nav.BackupOracle");AlwaysOnButton.Content=LocalizationService.T("Nav.HaOracle");PerformanceButton.Content=LocalizationService.T("Nav.PerfOracle");}
-        else if(e==DatabaseEngine.MySqlMariaDb){TempDbButton.Content=LocalizationService.T("Nav.TempMySql");LogButton.Content=LocalizationService.T("Nav.LogMySql");BackupJobsButton.Content=LocalizationService.T("Nav.BackupMySql");AlwaysOnButton.Content=LocalizationService.T("Nav.HaMySql");PerformanceButton.Content=LocalizationService.T("Nav.PerfMySql");}
-        else {TempDbButton.Content=LocalizationService.T("Nav.TempSql");LogButton.Content=LocalizationService.T("Nav.LogSql");BackupJobsButton.Content=LocalizationService.T("Nav.BackupSql");AlwaysOnButton.Content=LocalizationService.T("Nav.HaSql");PerformanceButton.Content=LocalizationService.T("Nav.PerfSql");}
+        if(e==DatabaseEngine.PostgreSql){IncidentButton.Content=LocalizationService.T("Nav.LongTransactionsPg"); BlockingButton.Content=LocalizationService.T("Nav.BlockingPg"); TempDbButton.Content=LocalizationService.T("Nav.TempPg");LogButton.Content=LocalizationService.T("Nav.LogPg");BackupJobsButton.Content=LocalizationService.T("Nav.BackupPg");AlwaysOnButton.Content=LocalizationService.T("Nav.HaPg");PerformanceButton.Content=LocalizationService.T("Nav.PerfPg");}
+        else if(e==DatabaseEngine.Oracle){IncidentButton.Content=LocalizationService.T("Nav.LongTransactionsOracle"); BlockingButton.Content=LocalizationService.T("Nav.BlockingOracle"); TempDbButton.Content=LocalizationService.T("Nav.TempOracle");LogButton.Content=LocalizationService.T("Nav.LogOracle");BackupJobsButton.Content=LocalizationService.T("Nav.BackupOracle");AlwaysOnButton.Content=LocalizationService.T("Nav.HaOracle");PerformanceButton.Content=LocalizationService.T("Nav.PerfOracle");}
+        else if(e==DatabaseEngine.MySqlMariaDb){IncidentButton.Content=LocalizationService.T("Nav.LongTransactionsMySql"); BlockingButton.Content=LocalizationService.T("Nav.BlockingMySql"); TempDbButton.Content=LocalizationService.T("Nav.TempMySql");LogButton.Content=LocalizationService.T("Nav.LogMySql");BackupJobsButton.Content=LocalizationService.T("Nav.BackupMySql");AlwaysOnButton.Content=LocalizationService.T("Nav.HaMySql");PerformanceButton.Content=LocalizationService.T("Nav.PerfMySql");}
+        else {IncidentButton.Content=LocalizationService.T("Nav.LongTransactionsSql"); BlockingButton.Content=LocalizationService.T("Nav.BlockingSql"); TempDbButton.Content=LocalizationService.T("Nav.TempSql");LogButton.Content=LocalizationService.T("Nav.LogSql");BackupJobsButton.Content=LocalizationService.T("Nav.BackupSql");AlwaysOnButton.Content=LocalizationService.T("Nav.HaSql");PerformanceButton.Content=LocalizationService.T("Nav.PerfSql");}
     }
 
     private void HealthGrid_SelectionChanged(object sender,SelectionChangedEventArgs e){if(HealthGrid.SelectedItem is HealthItem item)DetailText.Text=$"{item.Status} | {item.Area}\n{item.Summary}\n\n{item.Detail}";}
