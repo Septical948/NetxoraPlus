@@ -55,10 +55,12 @@ public partial class AssistantProfilesWindow:Window
     {
         var p=Current();
         if(string.IsNullOrWhiteSpace(p.Host)){OutputText.Text=LocalizationService.T("Profiles.HostRequired");return;}
-        ProfileActivated?.Invoke(p);
         ConnectRequested?.Invoke(p);
-        OutputText.Text=$"{LocalizationService.T("Profiles.GlobalActive")}\n{p.Display}\n\n{LocalizationService.T("Profiles.ContextUpdated")}";
     }
+
+    public void SetConnectionProgress(string message){OutputText.Foreground=System.Windows.Media.Brushes.White;OutputText.Text=message;UseButton.IsEnabled=false;TestProfileButton.IsEnabled=false;}
+    public void SetConnectionSuccess(string message){OutputText.Foreground=(System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#77E6CE")!;OutputText.Text=message;UseButton.IsEnabled=true;TestProfileButton.IsEnabled=true;}
+    public void SetConnectionError(string message){OutputText.Foreground=(System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#FF7B8A")!;OutputText.Text=message;UseButton.IsEnabled=true;TestProfileButton.IsEnabled=true;}
 
     private async void Test_Click(object s,RoutedEventArgs e){try{OutputText.Text=LocalizationService.T("Profiles.Testing");OutputText.Text=await DatabaseProviderFactory.Create(Current()).TestAsync();}catch(Exception ex){OutputText.Text=$"ERROR: {ex.Message}";}}
 }
