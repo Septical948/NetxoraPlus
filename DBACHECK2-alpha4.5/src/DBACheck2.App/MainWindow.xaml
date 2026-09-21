@@ -7,7 +7,7 @@
     <Window.Resources>
         <Style TargetType="DataGridColumnHeader"><Setter Property="Background" Value="#22324A"/><Setter Property="Foreground" Value="White"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Padding" Value="8"/><Setter Property="BorderBrush" Value="#34455F"/><Setter Property="BorderThickness" Value="0,0,1,1"/></Style>
         <Style TargetType="DataGridCell"><Setter Property="Padding" Value="6,4"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Foreground" Value="#E8EDF7"/></Style>
-        <Style x:Key="NavButton" TargetType="Button"><Setter Property="HorizontalContentAlignment" Value="Left"/><Setter Property="Height" Value="44"/><Setter Property="Margin" Value="0,0,0,7"/><Setter Property="Padding" Value="14,0"/><Setter Property="Background" Value="#15192B"/><Setter Property="Foreground" Value="#E8EDF7"/><Setter Property="BorderBrush" Value="#302B4E"/><Setter Property="BorderThickness" Value="1"/><Setter Property="FontWeight" Value="SemiBold"/><Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#211B3D"/><Setter Property="BorderBrush" Value="#744CFF"/><Setter Property="Foreground" Value="White"/></Trigger></Style.Triggers></Style>
+        <Style x:Key="NavButton" TargetType="Button"><Setter Property="HorizontalContentAlignment" Value="Left"/><Setter Property="Height" Value="44"/><Setter Property="Margin" Value="0,0,0,7"/><Setter Property="Padding" Value="14,0"/><Setter Property="Background" Value="#121729"/><Setter Property="Foreground" Value="#E8EDF7"/><Setter Property="BorderBrush" Value="#303655"/><Setter Property="BorderThickness" Value="1"/><Setter Property="FontWeight" Value="SemiBold"/><Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#211B3D"/><Setter Property="BorderBrush" Value="#744CFF"/><Setter Property="Foreground" Value="White"/></Trigger></Style.Triggers></Style>
         <Style x:Key="ActionButton" TargetType="Button"><Setter Property="Padding" Value="16,7"/><Setter Property="Background" Value="#22324A"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderBrush" Value="#34455F"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
     </Window.Resources>
 
@@ -29,8 +29,10 @@
             <Border Grid.Column="0" Background="#0D1120" BorderBrush="#22324A" BorderThickness="0,0,1,0" Padding="14,18">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top">
-                        <TextBlock x:Name="OperationLabelText" Text="OPERACIÓN" Foreground="#8F9BB3" FontSize="11" FontWeight="Bold" Margin="6,0,0,10"/><Button x:Name="AssistantButton" Style="{StaticResource NavButton}" Content="Connections / Profiles" Click="AssistantButton_Click"/><Button x:Name="QuickButton" Style="{StaticResource NavButton}" Content="Quick Check" Click="QuickButton_Click"/>
-                        
+                        <TextBlock x:Name="OperationLabelText" Text="START" Foreground="#8F9BB3" FontSize="10" FontWeight="Bold" Margin="6,0,0,9"/>
+                        <Button x:Name="AssistantButton" Style="{StaticResource NavButton}" Content="Connections / Profiles" Click="AssistantButton_Click"/>
+                        <Button x:Name="QuickButton" Style="{StaticResource NavButton}" Content="Quick Check" Click="QuickButton_Click"/>
+                        <TextBlock x:Name="DiagnosticsLabelText" Text="DIAGNOSTICS" Foreground="#8F9BB3" FontSize="10" FontWeight="Bold" Margin="6,9,0,9"/>
                         <Button x:Name="IncidentButton" Style="{StaticResource NavButton}" Content="Long Transactions" Click="IncidentButton_Click"/>
                         <Button x:Name="BlockingButton" Style="{StaticResource NavButton}" Content="Blocking Analyzer" Click="BlockingButton_Click"/>
                         <Button x:Name="TempDbButton" Style="{StaticResource NavButton}" Content="TempDB / Version Store" Click="TempDbButton_Click"/>
@@ -38,6 +40,7 @@
                         <Button x:Name="BackupJobsButton" Style="{StaticResource NavButton}" Content="Backups / Jobs" Click="BackupJobsButton_Click"/>
                         <Button x:Name="AlwaysOnButton" Style="{StaticResource NavButton}" Content="AlwaysOn / HA" Click="AlwaysOnButton_Click"/>
                         <Button x:Name="PerformanceButton" Style="{StaticResource NavButton}" Content="Performance" Click="PerformanceButton_Click"/>
+                        <TextBlock x:Name="IncidentsLabelText" Text="INCIDENTS" Foreground="#8F9BB3" FontSize="10" FontWeight="Bold" Margin="6,9,0,9"/>
                         <Button x:Name="HistoryButton" Style="{StaticResource NavButton}" Content="Incident History" Click="HistoryButton_Click"/>
                         <Button x:Name="OperationsButton" Style="{StaticResource NavButton}" Content="Incident Operations" Click="OperationsButton_Click"/>
                         
