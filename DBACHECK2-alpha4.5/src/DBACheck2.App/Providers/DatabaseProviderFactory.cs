@@ -5,7 +5,7 @@ public static class DatabaseProviderFactory
  public static IDatabaseProvider Create(ServerProfile p)=>p.Engine switch {
   DatabaseEngine.SqlServer=>new SqlServerProvider(p),
   DatabaseEngine.PostgreSql=>new PostgreSqlProvider(p),
-  DatabaseEngine.Oracle=>new OracleProvider(p),
+  DatabaseEngine.Oracle=>p.OracleMode switch { OracleConnectionMode.Legacy=>new OracleLegacyProvider(p), OracleConnectionMode.Modern=>new OracleProvider(p), _=>new OracleAutoProvider(p) },
   DatabaseEngine.MySqlMariaDb=>new MySqlMariaDbProvider(p),
   _=>new PlannedDatabaseProvider(p.Engine)
  };
