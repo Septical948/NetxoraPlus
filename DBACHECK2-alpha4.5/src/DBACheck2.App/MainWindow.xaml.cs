@@ -110,6 +110,7 @@ public partial class MainWindow : Window
     {
         var window=new AssistantProfilesWindow(ServerBox.Text.Trim());
         window.ProfileActivated+=ActivateProfile;
+        window.ConnectRequested+=_=>QuickButton_Click(this,new RoutedEventArgs());
         HostAnalyzer(window);
     }
 
