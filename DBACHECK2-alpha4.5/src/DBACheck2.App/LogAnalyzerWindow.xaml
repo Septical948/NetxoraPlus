@@ -2,7 +2,7 @@
 <Window.Resources><Style TargetType="DataGridColumnHeader"><Setter Property="Background" Value="#22324A"/><Setter Property="Foreground" Value="White"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Padding" Value="8"/></Style></Window.Resources>
 <Grid Margin="16">
 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="220"/></Grid.RowDefinitions>
-<StackPanel Grid.Row="0"><TextBlock Text="INCIDENT ANALYZER · TRANSACTION LOG" Foreground="#38E8D0" FontSize="26" FontWeight="Bold"/><TextBlock Text="Alpha 4.6.2 · Diagnosis + Correlation · Reuse Wait · Backups · Jobs · Transacciones · Solo lectura" Foreground="#B7C3D7"/></StackPanel>
+<StackPanel Grid.Row="0"><TextBlock Text="INCIDENT ANALYZER · TRANSACTION LOG" Foreground="#38E8D0" FontSize="26" FontWeight="Bold"/><TextBlock Text="Beta 1 · Diagnosis + Correlation · Reuse Wait · Backups · Jobs · Transacciones · Solo lectura" Foreground="#B7C3D7"/></StackPanel>
 <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,14,0,10">
 <Button x:Name="RefreshButton" Content="ACTUALIZAR" Padding="18,8" Click="RefreshButton_Click"/>
 <Button x:Name="DiagnosisButton" Content="DIAGNÓSTICO" Margin="10,0,0,0" Padding="18,8" IsEnabled="False" Click="DiagnosisButton_Click"/>
