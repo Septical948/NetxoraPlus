@@ -8,20 +8,28 @@ public sealed class MySqlMariaDbProvider:IDatabaseProvider
  readonly ServerProfile profile;
  public MySqlMariaDbProvider(ServerProfile p){profile=p;}
  private string Cs(string host,uint port)=>new MySqlConnectionStringBuilder{Server=host,Port=port,Database=profile.DatabaseOrService,UserID=profile.Username??"",Password=profile.Password??"",ConnectionTimeout=8,DefaultCommandTimeout=15,Pooling=false}.ConnectionString;
+ private PrivateKeyFile LoadPrivateKey()
+ {
+  var path=profile.SshPrivateKeyPath??"";
+  if(!File.Exists(path))throw new InvalidOperationException($"SSH KEY FILE FAILED: file not found: {path}");
+  try{return string.IsNullOrEmpty(profile.SshKeyPassphrase)?new PrivateKeyFile(path):new PrivateKeyFile(path,profile.SshKeyPassphrase);}
+  catch(Exception e){throw new InvalidOperationException($"PPK LOAD FAILED: {e.Message} Check the key passphrase and confirm the same .ppk opens in PuTTYgen.",e);}
+ }
  private (SshClient Client,ForwardedPortLocal Port)? OpenTunnel()
  {
   if(!profile.UseSshTunnel)return null;
   if(string.IsNullOrWhiteSpace(profile.SshHost)||string.IsNullOrWhiteSpace(profile.SshUsername)||string.IsNullOrWhiteSpace(profile.SshPrivateKeyPath))throw new InvalidOperationException("SSH tunnel requires SSH host, SSH user and private key path.");
-  var key=string.IsNullOrEmpty(profile.SshKeyPassphrase)?new PrivateKeyFile(profile.SshPrivateKeyPath):new PrivateKeyFile(profile.SshPrivateKeyPath,profile.SshKeyPassphrase);
-  var client=new SshClient(profile.SshHost,profile.SshPort??22,profile.SshUsername,key);client.Connect();
-  var port=new ForwardedPortLocal("127.0.0.1",0,profile.Host,(uint)(profile.Port??3306));client.AddForwardedPort(port);port.Start();return(client,port);
+  var key=LoadPrivateKey();
+  var client=new SshClient(profile.SshHost,profile.SshPort??22,profile.SshUsername,key);
+  try{client.Connect();}catch(Exception e){client.Dispose();throw new InvalidOperationException($"SSH AUTH FAILED: key loaded correctly, but SSH authentication/connection to {profile.SshHost}:{profile.SshPort??22} as {profile.SshUsername} failed: {e.Message}",e);}
+  try{var port=new ForwardedPortLocal("127.0.0.1",0,profile.Host,(uint)(profile.Port??3306));client.AddForwardedPort(port);port.Start();return(client,port);}catch(Exception e){client.Disconnect();client.Dispose();throw new InvalidOperationException($"SSH TUNNEL FAILED: SSH authenticated, but forwarding to {profile.Host}:{profile.Port??3306} failed: {e.Message}",e);}
  }
  private async Task<T> WithConnection<T>(Func<MySqlConnection,Task<T>> work)
  {
   var tunnel=OpenTunnel();try{var host=tunnel is null?profile.Host:"127.0.0.1";var port=tunnel is null?(uint)(profile.Port??3306):tunnel.Value.Port.BoundPort;await using var c=new MySqlConnection(Cs(host,port));await c.OpenAsync();return await work(c);}finally{if(tunnel is not null){tunnel.Value.Port.Stop();tunnel.Value.Client.Disconnect();tunnel.Value.Port.Dispose();tunnel.Value.Client.Dispose();}}
  }
  public DatabaseEngine Engine=>DatabaseEngine.MySqlMariaDb; public string DisplayName=>"MySQL / MariaDB";
- public Task<string> TestAsync()=>WithConnection(async c=>{await using var q=new MySqlCommand("select version(),database(),current_user()",c);await using var r=await q.ExecuteReaderAsync();await r.ReadAsync();return $"{r.GetString(0)}\nDatabase: {(r.IsDBNull(1)?"N/A":r.GetString(1))} | User: {r.GetString(2)}";});
+ public async Task<string> TestAsync(){try{return await WithConnection(async c=>{await using var q=new MySqlCommand("select version(),database(),current_user()",c);await using var r=await q.ExecuteReaderAsync();await r.ReadAsync();return $"{(profile.UseSshTunnel?"PPK LOAD: OK\\nSSH AUTH: OK\\nSSH TUNNEL: OK\\n":"")}MYSQL TCP/AUTH: OK\\n{r.GetString(0)}\\nDatabase: {(r.IsDBNull(1)?"N/A":r.GetString(1))} | User: {r.GetString(2)}";});}catch(MySqlException e){throw new InvalidOperationException($"MYSQL TCP/AUTH FAILED: SSH tunnel {(profile.UseSshTunnel?"was established, but ":"")}MySQL rejected or could not complete the connection: {e.Message}",e);}}
  public Task<List<HealthItem>> QuickCheckAsync()=>WithConnection(async c=>{var x=new List<HealthItem>();
   var version=await Scalar(c,"select version()"); var maria=version.Contains("MariaDB",StringComparison.OrdinalIgnoreCase);
   x.Add(new(){Area="ENGINE",Status="INFO",Summary=$"{(maria?"MariaDB":"MySQL")} {version}",Detail=$"Host: {profile.Host} | Database: {profile.DatabaseOrService} | User: {profile.Username}"});
