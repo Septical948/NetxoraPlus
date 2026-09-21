@@ -7,7 +7,7 @@
     <Window.Resources>
         <Style TargetType="DataGridColumnHeader"><Setter Property="Background" Value="#22324A"/><Setter Property="Foreground" Value="White"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Padding" Value="8"/><Setter Property="BorderBrush" Value="#34455F"/><Setter Property="BorderThickness" Value="0,0,1,1"/></Style>
         <Style TargetType="DataGridCell"><Setter Property="Padding" Value="6,4"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Foreground" Value="#E8EDF7"/></Style>
-        <Style x:Key="NavButton" TargetType="Button"><Setter Property="HorizontalContentAlignment" Value="Left"/><Setter Property="Height" Value="44"/><Setter Property="Margin" Value="0,0,0,7"/><Setter Property="Padding" Value="14,0"/><Setter Property="Background" Value="#121729"/><Setter Property="Foreground" Value="#E8EDF7"/><Setter Property="BorderBrush" Value="#303655"/><Setter Property="BorderThickness" Value="1"/><Setter Property="FontWeight" Value="SemiBold"/><Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#211B3D"/><Setter Property="BorderBrush" Value="#744CFF"/><Setter Property="Foreground" Value="White"/></Trigger></Style.Triggers></Style>
+        <Style x:Key="NavButton" TargetType="Button"><Setter Property="HorizontalContentAlignment" Value="Left"/><Setter Property="Height" Value="38"/><Setter Property="Margin" Value="0,0,0,2"/><Setter Property="Padding" Value="12,0"/><Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#D9E1EE"/><Setter Property="BorderThickness" Value="0"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="FontSize" Value="12"/><Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#17172A"/><Setter Property="Foreground" Value="#BDA7FF"/></Trigger><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="Background" Value="#1C1932"/><Setter Property="Foreground" Value="#FFFFFF"/></Trigger></Style.Triggers></Style>
         <Style x:Key="ActionButton" TargetType="Button"><Setter Property="Padding" Value="16,7"/><Setter Property="Background" Value="#22324A"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderBrush" Value="#34455F"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
     </Window.Resources>
 
@@ -26,7 +26,7 @@
             <Grid.ColumnDefinitions><ColumnDefinition Width="225"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
 
             <!-- Operational navigation; no analyzer opens a second window -->
-            <Border Grid.Column="0" Background="#0D1120" BorderBrush="#22324A" BorderThickness="0,0,1,0" Padding="14,18">
+            <Border Grid.Column="0" Background="#0D1120" BorderBrush="#20263A" BorderThickness="0,0,1,0" Padding="12,18">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top">
                         <TextBlock x:Name="OperationLabelText" Text="START" Foreground="#8F9BB3" FontSize="10" FontWeight="Bold" Margin="6,0,0,9"/>
