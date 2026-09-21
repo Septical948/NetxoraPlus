@@ -29,7 +29,7 @@ public static class LocalizationService
         ["Quick.Title"]=("CHEQUEO RÁPIDO","QUICK CHECK"), ["Quick.Subtitle"]=("Estado operativo del destino seleccionado. Solo lectura.","Operational status of the selected target. Read-only."),
         ["Quick.Ready"]=("Listo. Seleccioná el destino / perfil y ejecutá el chequeo rápido.","Ready. Select the target / profile and run Quick Check."), ["Quick.SelectEvidence"]=("Seleccioná una fila para ver la evidencia completa.","Select a row to view the complete evidence."),
         ["Grid.Status"]=("Estado","Status"), ["Grid.Area"]=("Área","Area"), ["Grid.Summary"]=("Resumen","Summary"), ["Grid.Evidence"]=("Evidencia / detalle","Evidence / detail"),
-        ["Grid.EvidenceTitle"]=("EVIDENCIA DEL CHECK SELECCIONADO","SELECTED CHECK EVIDENCE"),
+        ["Grid.EvidenceTitle"]=("EVIDENCIA DEL CHECK SELECCIONADO","SELECTED CHECK EVIDENCE"), ["Insight.Health"]=("ESTADO","HEALTH"), ["Insight.Alerts"]=("ALERTAS","ALERTS"), ["Insight.Top"]=("HALLAZGO PRINCIPAL","TOP FINDING"), ["Insight.Engine"]=("MOTOR / CONTEXTO","ENGINE / CONTEXT"),
         ["Common.ReadOnly"]=("Solo lectura","Read-only"), ["Language.Label"]=("IDIOMA","LANGUAGE"),
         ["Profiles.Title"]=("PERFILES DE SERVIDOR","SERVER PROFILES"), ["Profiles.ConnectionTitle"]=("CONEXIÓN / PERFILES","CONNECTION / PROFILES"), ["Profiles.Connect"]=("CONECTAR","CONNECT"), ["Profiles.Save"]=("GUARDAR","SAVE"), ["Profiles.Load"]=("CARGAR","LOAD"), ["Profiles.Use"]=("USAR PERFIL","USE PROFILE"),
         ["Profiles.Test"]=("PROBAR","TEST"), ["Profiles.Ask"]=("PREGUNTAR","ASK"), ["Profiles.Question"]=("¿Qué problemas tiene este servidor?","What problems does this server have?"),
