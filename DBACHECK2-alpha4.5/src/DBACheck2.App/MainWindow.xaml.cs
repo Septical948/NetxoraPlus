@@ -18,6 +18,8 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        GlobalEngineBox.ItemsSource=Enum.GetValues<DatabaseEngine>();
+        GlobalEngineBox.SelectedItem=DatabaseEngine.SqlServer;
         LanguageBox.SelectedIndex=LocalizationService.Current==AppLanguage.Es?0:1;
         ApplyLanguage();
         ServerBox.TextChanged += (_,__) => {
@@ -77,7 +79,7 @@ public partial class MainWindow : Window
     private void HostAnalyzer(Window analyzer){ReleaseHostedAnalyzer();QuickCheckView.Visibility=Visibility.Collapsed;ModuleHost.Visibility=Visibility.Visible;var content=analyzer.Content as UIElement;analyzer.Content=null;_hostedAnalyzer=analyzer;ModuleHost.Content=content;analyzer.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));}
     private void ReleaseHostedAnalyzer(){ModuleHost.Content=null;_hostedAnalyzer=null;}
 
-    private bool IsSql=>_activeProfile is null||_activeProfile.Engine==DatabaseEngine.SqlServer;
+    private bool IsSql=>_activeEngine==DatabaseEngine.SqlServer;
     private IDatabaseProvider ActiveProvider()=>DatabaseProviderFactory.Create(_activeProfile??new ServerProfile{Engine=DatabaseEngine.SqlServer,Host=ServerBox.Text.Trim(),TrustCertificate=TrustCertBox.IsChecked==true});
     private void OpenEngine(string module,string title,Func<Window> sql){if(!ValidateTarget())return;if(IsSql)HostAnalyzer(sql());else HostAnalyzer(new EngineAnalyzerWindow(ActiveProvider(),module,title));}
     private void IncidentButton_Click(object sender,RoutedEventArgs e)=>OpenEngine("transactions",IncidentButton.Content.ToString()!,()=>new TransactionAnalyzerWindow(Service(),Compat()));
@@ -100,6 +102,7 @@ public partial class MainWindow : Window
     {
         _activeProfile=profile;
         _activeEngine=profile.Engine;
+        GlobalEngineBox.SelectedItem=profile.Engine;
         _activeProfileName=string.IsNullOrWhiteSpace(profile.Name)?"Manual":profile.Name;
         ServerBox.Text=profile.Host;
         TrustCertBox.IsChecked=profile.TrustCertificate;
@@ -108,6 +111,16 @@ public partial class MainWindow : Window
         ApplyEngineNavigation(profile.Engine);
         if(profile.Engine==DatabaseEngine.SqlServer) SetConnectionState("NO VERIFICADA","#263244","#B7C3D7");
         else SetConnectionState($"{profile.Engine} · NO VERIFICADA","#263244","#B7C3D7");
+    }
+
+    private void GlobalEngineBox_SelectionChanged(object sender,SelectionChangedEventArgs e)
+    {
+        if(GlobalEngineBox.SelectedItem is not DatabaseEngine engine)return;
+        _activeEngine=engine;
+        if(_activeProfile is not null && _activeProfile.Engine!=engine)_activeProfile=null;
+        ApplyEngineNavigation(engine);
+        AuthenticationText.Text=engine==DatabaseEngine.SqlServer?LocalizationService.T("Context.WindowsAuth"):LocalizationService.T("Context.ProfileRequired");
+        SetConnectionState(engine+" · "+LocalizationService.T("Connection.Unverified"),"#263244","#B7C3D7");
     }
 
     private void LanguageBox_SelectionChanged(object sender,SelectionChangedEventArgs e)
@@ -120,7 +133,7 @@ public partial class MainWindow : Window
     private void ApplyLanguage()
     {
         if(SubtitleText is null)return;
-        SubtitleText.Text=LocalizationService.T("App.Subtitle"); TargetLabelText.Text=LocalizationService.T("Connection.Target");
+        SubtitleText.Text=LocalizationService.T("App.Subtitle"); EngineLabelText.Text=LocalizationService.T("Connection.Engine"); TargetLabelText.Text=LocalizationService.T("Connection.Target");
         TestButton.Content=LocalizationService.T("Connection.Test"); TrustCertBox.Content=LocalizationService.T("Connection.Trust");
         OperationLabelText.Text=LocalizationService.T("Nav.Operation"); QuickButton.Content=LocalizationService.T("Nav.Quick");
         HistoryButton.Content=LocalizationService.T("Nav.History"); OperationsButton.Content=LocalizationService.T("Nav.Operations"); AssistantButton.Content=LocalizationService.T("Nav.Assistant");
