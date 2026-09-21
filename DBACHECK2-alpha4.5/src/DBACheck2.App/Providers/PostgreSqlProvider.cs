@@ -48,8 +48,14 @@ public sealed class PostgreSqlProvider : IDatabaseProvider
         result.Add(new HealthItem{Area="ENGINE",Status="INFO",Summary=$"PostgreSQL {version}",Detail=$"Role: {(recovery?"Standby":"Primary")} | Database: {_profile.DatabaseOrService} | User: {_profile.Username}"});
 
         result.Add(await ScalarCheck(cn,"DATABASES",@"
+SELECT 'OK',
+       COUNT(*)||' database(s)',
+       COALESCE(string_agg(datname, ', '),'')
+FROM pg_database WHERE datallowconn AND datname NOT IN ('template0','template1');"));
+
+        result.Add(await ScalarCheck(cn,"DATABASE ACCESS",@"
 SELECT CASE WHEN COUNT(*)>0 THEN 'WARNING' ELSE 'OK' END,
-       COUNT(*)||' database(s) sin permitir conexiones',
+       COUNT(*)||' database(s) without connections allowed',
        COALESCE(string_agg(datname, ', '),'')
 FROM pg_database WHERE NOT datallowconn AND datname NOT IN ('template0','template1');"));
 
