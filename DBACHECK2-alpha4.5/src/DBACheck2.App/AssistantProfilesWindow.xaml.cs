@@ -11,6 +11,7 @@ public partial class AssistantProfilesWindow:Window
     private readonly ServerProfileService _profiles=new();
     private List<ServerProfile> _items=new();
     public event Action<ServerProfile>? ProfileActivated;
+    public event Action<ServerProfile>? ConnectRequested;
 
     public AssistantProfilesWindow(string currentHost)
     {
@@ -35,7 +36,7 @@ public partial class AssistantProfilesWindow:Window
     {
         _items=await _profiles.LoadAsync();
         ProfilesBox.ItemsSource=null;ProfilesBox.ItemsSource=_items;
-        OutputText.Text=$"Profiles: {_items.Count}\nStorage: {_profiles.PathName}\n\nSeleccioná USAR PERFIL para convertirlo en el contexto global de DBACHECK.";
+        OutputText.Text=LocalizationService.Current==AppLanguage.En?$"Profiles: {_items.Count}\nStorage: {_profiles.PathName}\n\nSelect a profile and press CONNECT to activate it and run Quick Check.":$"Perfiles: {_items.Count}\nAlmacenamiento: {_profiles.PathName}\n\nSeleccioná un perfil y presioná CONECTAR para activarlo y ejecutar el Chequeo rápido.";
     }
 
     private async void Save_Click(object s,RoutedEventArgs e)
@@ -55,6 +56,7 @@ public partial class AssistantProfilesWindow:Window
         var p=Current();
         if(string.IsNullOrWhiteSpace(p.Host)){OutputText.Text=LocalizationService.T("Profiles.HostRequired");return;}
         ProfileActivated?.Invoke(p);
+        ConnectRequested?.Invoke(p);
         OutputText.Text=$"{LocalizationService.T("Profiles.GlobalActive")}\n{p.Display}\n\n{LocalizationService.T("Profiles.ContextUpdated")}";
     }
 
