@@ -138,7 +138,7 @@ public partial class MainWindow : Window
         OperationLabelText.Text=LocalizationService.T("Nav.Operation"); QuickButton.Content=LocalizationService.T("Nav.Quick");
         HistoryButton.Content=LocalizationService.T("Nav.History"); OperationsButton.Content=LocalizationService.T("Nav.Operations"); AssistantButton.Content=LocalizationService.T("Nav.Assistant");
         CurrentContextLabelText.Text=LocalizationService.T("Context.Current"); AuthenticationText.Text=LocalizationService.T("Context.WindowsAuth");
-        QuickTitleText.Text=LocalizationService.T("Quick.Title"); QuickSubtitleText.Text=LocalizationService.T("Quick.Subtitle");
+        QuickTitleText.Text=LocalizationService.T("Quick.Title"); QuickSubtitleText.Text=LocalizationService.T("Quick.Subtitle"); StatusText.Text=LocalizationService.T("Quick.Ready"); DetailText.Text=LocalizationService.T("Quick.SelectEvidence");
         StatusColumn.Header=LocalizationService.T("Grid.Status"); AreaColumn.Header=LocalizationService.T("Grid.Area"); SummaryColumn.Header=LocalizationService.T("Grid.Summary"); EvidenceColumn.Header=LocalizationService.T("Grid.Evidence");
         EvidenceTitleText.Text=LocalizationService.T("Grid.EvidenceTitle"); LanguageLabelText.Text=LocalizationService.T("Language.Label");
         FooterText.Text=$"DBACHECK 2 Beta 1 | Multi-engine | {LocalizationService.T("Common.ReadOnly")}";
