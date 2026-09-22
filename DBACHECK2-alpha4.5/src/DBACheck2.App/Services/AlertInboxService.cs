@@ -7,6 +7,8 @@ public sealed class AlertInboxService
 {
     private readonly IntegrationProfileService _integrations=new();
     private readonly IntegrationTargetResolver _resolver=new();
+    private readonly AlertInboxStore _store=new();
+    private static bool En=>LocalizationService.Current==AppLanguage.En;
 
     public async Task<AlertInboxLoadResult> LoadAsync()
     {
@@ -33,6 +35,20 @@ public sealed class AlertInboxService
             {
                 result.SourcesFailed++;
                 result.SourceStatus.Add($"{p.Name} | {p.Source} | ERROR | {ex.Message}");
+            }
+        }
+
+        if(result.SourcesOk==0)
+        {
+            var cached=await _store.LoadAsync();
+            if(cached.Items.Count>0)
+            {
+                foreach(var item in cached.Items)item.State="CACHED";
+                result.Items=cached.Items;
+                result.SourceStatus.Add(cached.CapturedAt.HasValue
+                    ? (En?$"LOCAL CACHE | last successful snapshot {cached.CapturedAt:yyyy-MM-dd HH:mm:ss}":$"CACHE LOCAL | última captura exitosa {cached.CapturedAt:yyyy-MM-dd HH:mm:ss}")
+                    : (En?"LOCAL CACHE | previous snapshot":"CACHE LOCAL | captura previa"));
+                return result;
             }
         }
 
@@ -81,6 +97,8 @@ public sealed class AlertInboxService
             .ThenByDescending(x=>x.PriorityScore)
             .ThenBy(x=>x.FirstSeen)
             .ToList();
+
+        if(result.SourcesOk>0) await _store.SaveAsync(result.Items);
         return result;
     }
 
@@ -137,14 +155,13 @@ public sealed class AlertInboxService
     {
         var reasons=new List<string>();
         var sev=rows.OrderByDescending(x=>SeverityRank(x.Severity)).First().Severity;
-        reasons.Add($"monitor severity={sev}");
-        if(environment!="UNKNOWN")reasons.Add($"environment={environment}");
-        var age=DateTime.Now-first;
-        reasons.Add($"active for {Age(first)}");
-        if(rows.Any(x=>!x.Acknowledged))reasons.Add("unacknowledged");
+        reasons.Add(En?$"monitor severity={sev}":$"severidad monitor={sev}");
+        if(environment!="UNKNOWN")reasons.Add(En?$"environment={environment}":$"ambiente={environment}");
+        reasons.Add(En?$"active for {Age(first)}":$"activa hace {Age(first)}");
+        if(rows.Any(x=>!x.Acknowledged))reasons.Add(En?"unacknowledged":"sin reconocer");
         var sourceCount=rows.Select(x=>x.Source).Distinct().Count();
-        if(sourceCount>1)reasons.Add($"{sourceCount} monitoring sources");
-        reasons.Add($"category={category}");
+        if(sourceCount>1)reasons.Add(En?$"{sourceCount} monitoring sources":$"{sourceCount} fuentes de monitoreo");
+        reasons.Add(En?$"category={category}":$"categoría={category}");
         reasons.Add($"score={score}/100");
         return string.Join(" | ",reasons);
     }
