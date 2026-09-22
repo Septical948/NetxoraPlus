@@ -91,7 +91,7 @@
                             <Button x:Name="AssistantButton" Style="{StaticResource NavButton}" Content="Connections / Profiles" Click="AssistantButton_Click"/>
                             <Button x:Name="QuickButton" Style="{StaticResource NavButton}" Content="Quick Check" Click="QuickButton_Click"/>
 
-                            <Expander x:Name="DiagnosticsExpander" Style="{StaticResource SectionExpander}" Header="DIAGNOSTICS" IsExpanded="False">
+                            <Expander x:Name="DiagnosticsExpander" Style="{StaticResource SectionExpander}" Header="DIAGNOSTICS" IsExpanded="False" Expanded="NavExpander_Expanded">
                                 <StackPanel>
                                     <Button x:Name="IncidentButton" Style="{StaticResource NavButton}" Content="Long Transactions" Click="IncidentButton_Click"/>
                                     <Button x:Name="BlockingButton" Style="{StaticResource NavButton}" Content="Blocking Analyzer" Click="BlockingButton_Click"/>
@@ -103,13 +103,13 @@
                                 </StackPanel>
                             </Expander>
 
-                            <Expander x:Name="IntegrationsExpander" Style="{StaticResource SectionExpander}" Header="INTEGRATIONS" IsExpanded="False">
+                            <Expander x:Name="IntegrationsExpander" Style="{StaticResource SectionExpander}" Header="INTEGRATIONS" IsExpanded="False" Expanded="NavExpander_Expanded">
                                 <StackPanel>
                                     <Button x:Name="IntegrationsButton" Style="{StaticResource NavButton}" Content="Monitoring Integrations" Click="IntegrationsButton_Click"/>
                                 </StackPanel>
                             </Expander>
 
-                            <Expander x:Name="IncidentsExpander" Style="{StaticResource SectionExpander}" Header="INCIDENTS" IsExpanded="False">
+                            <Expander x:Name="IncidentsExpander" Style="{StaticResource SectionExpander}" Header="INCIDENTS" IsExpanded="False" Expanded="NavExpander_Expanded">
                                 <StackPanel>
                                     <Button x:Name="HistoryButton" Style="{StaticResource NavButton}" Content="Incident History" Click="HistoryButton_Click"/>
                                     <Button x:Name="OperationsButton" Style="{StaticResource NavButton}" Content="Incident Operations" Click="OperationsButton_Click"/>
