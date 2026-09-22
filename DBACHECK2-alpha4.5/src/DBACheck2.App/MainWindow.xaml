@@ -111,6 +111,7 @@
 
                             <Expander x:Name="IncidentsExpander" Style="{StaticResource SectionExpander}" Header="INCIDENTS" IsExpanded="False" Expanded="NavExpander_Expanded">
                                 <StackPanel>
+                                    <Button x:Name="AlertInboxButton" Style="{StaticResource NavButton}" Content="Alert Inbox" Click="AlertInboxButton_Click"/>
                                     <Button x:Name="HistoryButton" Style="{StaticResource NavButton}" Content="Incident History" Click="HistoryButton_Click"/>
                                     <Button x:Name="OperationsButton" Style="{StaticResource NavButton}" Content="Incident Operations" Click="OperationsButton_Click"/>
                                 </StackPanel>
