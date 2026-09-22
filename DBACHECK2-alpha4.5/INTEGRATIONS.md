@@ -1,0 +1,76 @@
+# DBACHECK2 Integration Layer
+
+Status: Beta 2 integration phase (first adapter: Zabbix)
+
+## Goal
+
+DBACHECK2 does not try to replace monitoring platforms. Monitoring systems detect conditions and expose events/metrics; DBACHECK2 consumes those signals and correlates them with database-specific evidence.
+
+Flow:
+
+Monitoring source -> Integration provider -> Normalized IntegrationEvent -> Correlation hint -> DB provider diagnostics -> Incident workflow
+
+## Common integration model
+
+All external adapters must map source-specific data to `IntegrationEvent`:
+
+- Source
+- External event ID
+- Host
+- Problem name
+- Normalized severity
+- Native severity
+- Timestamp
+- Acknowledged / suppressed state
+- Tags
+- Raw detail
+- DBACHECK correlation hint
+
+The provider contract is `IIntegrationProvider` and adapters are created through `IntegrationProviderFactory`.
+
+Planned adapters:
+- Zabbix: enabled
+- Nagios: planned
+- Prometheus / Alertmanager: planned
+- Datadog: planned
+
+## Zabbix adapter
+
+Current read-only capabilities:
+- API reachability/version test
+- API token authentication
+- Current Authorization: Bearer flow
+- Legacy `auth` JSON-RPC fallback for older installations
+- `problem.get` for unresolved problems
+- `trigger.get` to resolve trigger -> host
+- Severity normalization
+- Tags and opdata collection
+- DBACHECK correlation hints
+
+DBACHECK accepts either:
+- a Zabbix base URL, e.g. `https://zabbix.example/zabbix`
+- the full endpoint, e.g. `https://zabbix.example/zabbix/api_jsonrpc.php`
+
+Integration tokens are optional at rest. If "Remember token" is enabled, the token is encrypted with Windows DPAPI for the current Windows user. It is never stored as plaintext.
+
+## Correlation categories
+
+The first correlation layer recognizes monitoring symptoms related to:
+- Storage / filesystem
+- Transaction log / WAL / redo / binlog
+- Blocking / locks / deadlocks
+- HA / replication
+- Backup
+- Performance / CPU / I/O / latency
+- Availability / connections
+
+This first layer produces a diagnostic direction only. The next step is target/profile matching so an external event can automatically invoke the correct SQL Server, PostgreSQL, Oracle or MySQL/MariaDB read-only collectors.
+
+## Next implementation step
+
+1. Map monitoring hosts/tags to DBACHECK server profiles.
+2. Run targeted DB collectors from a selected external event.
+3. Store external-event evidence in Incident History.
+4. Add Nagios adapter.
+5. Add Prometheus/Alertmanager adapter.
+6. Add webhook/push ingestion in addition to pull/API mode.
