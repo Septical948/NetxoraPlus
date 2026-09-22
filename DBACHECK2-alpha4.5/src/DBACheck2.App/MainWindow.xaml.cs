@@ -23,11 +23,22 @@ public partial class MainWindow : Window
         GlobalEngineBox.SelectedItem=DatabaseEngine.SqlServer;
         LanguageBox.SelectedIndex=LocalizationService.Current==AppLanguage.Es?0:1;
         ApplyLanguage();
-        Loaded+=(_,__)=>{UpdateMaximizeButton();AssistantButton_Click(this,new RoutedEventArgs());};
+        Loaded+=async(_,__)=>{UpdateMaximizeButton();await OpenStartupViewAsync();};
         ServerBox.TextChanged += (_,__) => {
             TargetContextText.Text=string.IsNullOrWhiteSpace(ServerBox.Text)?"Sin destino":ServerBox.Text.Trim();
             SetConnectionState("NO VERIFICADA","#263244","#B7C3D7");
         };
+    }
+
+    private async Task OpenStartupViewAsync()
+    {
+        var integrations=await new IntegrationProfileService().LoadAsync();
+        if(integrations.Count>0)
+        {
+            IncidentsExpander.IsExpanded=true;
+            HostAnalyzer(new AlertInboxWindow());
+        }
+        else AssistantButton_Click(this,new RoutedEventArgs());
     }
 
     private SqlHealthService Service()=>new(ServerBox.Text.Trim(),TrustCertBox.IsChecked==true);
