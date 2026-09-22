@@ -9,7 +9,10 @@ namespace DBACheck2.App;
 public partial class IntegrationWindow:Window
 {
     private readonly IntegrationProfileService _profiles=new();
+    private readonly ExternalEventDiagnosisService _diagnosis=new();
+    private readonly IncidentHistoryService _history=new();
     private List<IntegrationConnectionProfile> _items=new();
+    private ExternalDiagnosisResult? _lastDiagnosis;
     private bool En=>LocalizationService.Current==AppLanguage.En;
 
     public IntegrationWindow()
@@ -32,6 +35,7 @@ public partial class IntegrationWindow:Window
         VerifyTlsBox.Content=En?"Verify TLS certificate":"Verificar certificado TLS";
         SaveButton.Content=En?"SAVE":"GUARDAR";DeleteButton.Content=En?"DELETE":"ELIMINAR";
         TestButton.Content=En?"TEST API":"PROBAR API";LoadProblemsButton.Content=En?"LOAD OPEN PROBLEMS":"CARGAR PROBLEMAS ABIERTOS";
+        DiagnoseButton.Content=En?"DIAGNOSE SELECTED":"DIAGNOSTICAR SELECCIONADO";CreateIncidentButton.Content=En?"CREATE INCIDENT":"CREAR INCIDENTE";
         SeverityColumn.Header=En?"Severity":"Severidad";NativeSeverityColumn.Header=En?"Native":"Nativa";HostColumn.Header="Host";
         ProblemColumn.Header=En?"Problem":"Problema";TimeColumn.Header=En?"Time":"Hora";AckColumn.Header=En?"Ack":"Recon.";
         DetailTitleText.Text=En?"CORRELATION / EVIDENCE":"CORRELACIÓN / EVIDENCIA";
@@ -106,10 +110,46 @@ public partial class IntegrationWindow:Window
 
     private void EventsGrid_SelectionChanged(object s,SelectionChangedEventArgs e)
     {
+        _lastDiagnosis=null;CreateIncidentButton.IsEnabled=false;
+        DiagnoseButton.IsEnabled=EventsGrid.SelectedItem is IntegrationEvent;
         if(EventsGrid.SelectedItem is not IntegrationEvent x)return;
         DetailText.Text=$"{x.Source} | {x.Severity} ({x.NativeSeverity})\nHost: {x.Host}\nTime: {x.Timestamp:yyyy-MM-dd HH:mm:ss}\nEvent ID: {x.ExternalId}\nAcknowledged: {x.Acknowledged} | Suppressed: {x.Suppressed}\n\nPROBLEM\n{x.Name}\n\nTAGS\n{x.Tags}\n\nMONITOR DETAIL\n{x.RawDetail}\n\nDBACHECK CORRELATION HINT\n{x.CorrelationHint}";
     }
 
+    private async void Diagnose_Click(object s,RoutedEventArgs e)
+    {
+        if(EventsGrid.SelectedItem is not IntegrationEvent ev)return;
+        try
+        {
+            SetBusy(true);StatusText.Text=En?"Matching host to DBACHECK profile and running targeted diagnosis...":"Buscando perfil DBACHECK y ejecutando diagnóstico dirigido...";
+            _lastDiagnosis=await _diagnosis.DiagnoseAsync(ev);
+            DetailText.Text=_lastDiagnosis.BuildEvidence();
+            CreateIncidentButton.IsEnabled=true;
+            StatusText.Text=En
+                ?$"Matched {_lastDiagnosis.Profile.Name} | {_lastDiagnosis.Profile.Engine} | {_lastDiagnosis.Category} | {_lastDiagnosis.RelevantChecks.Count} correlated check(s)"
+                :$"Perfil {_lastDiagnosis.Profile.Name} | {_lastDiagnosis.Profile.Engine} | {_lastDiagnosis.Category} | {_lastDiagnosis.RelevantChecks.Count} check(s) correlacionado(s)";
+        }
+        catch(Exception ex)
+        {
+            _lastDiagnosis=null;CreateIncidentButton.IsEnabled=false;StatusText.Text="ERROR: "+ex.Message;
+        }
+        finally{SetBusy(false);DiagnoseButton.IsEnabled=EventsGrid.SelectedItem is IntegrationEvent;}
+    }
+
+    private async void CreateIncident_Click(object s,RoutedEventArgs e)
+    {
+        if(_lastDiagnosis is null)return;
+        try
+        {
+            SetBusy(true);
+            var d=_lastDiagnosis.ToIncidentDiagnosis();
+            var id=await _history.SaveAsync(_lastDiagnosis.Profile.Host,_lastDiagnosis.Profile.DatabaseOrService??"","External Monitoring",d);
+            StatusText.Text=En?$"Incident #{id} created from {_lastDiagnosis.Event.Source} event {_lastDiagnosis.Event.ExternalId}.":$"Incidente #{id} creado desde evento {_lastDiagnosis.Event.Source} {_lastDiagnosis.Event.ExternalId}.";
+        }
+        catch(Exception ex){StatusText.Text="ERROR: "+ex.Message;}
+        finally{SetBusy(false);CreateIncidentButton.IsEnabled=_lastDiagnosis is not null;}
+    }
+
     private void ExpandDetailButton_Click(object s,RoutedEventArgs e)=>DetailPanelService.Toggle(DetailRow,ExpandDetailButton);
-    private void SetBusy(bool busy){SaveButton.IsEnabled=!busy;DeleteButton.IsEnabled=!busy;TestButton.IsEnabled=!busy;LoadProblemsButton.IsEnabled=!busy;}
+    private void SetBusy(bool busy){SaveButton.IsEnabled=!busy;DeleteButton.IsEnabled=!busy;TestButton.IsEnabled=!busy;LoadProblemsButton.IsEnabled=!busy;DiagnoseButton.IsEnabled=!busy&&EventsGrid.SelectedItem is IntegrationEvent;CreateIncidentButton.IsEnabled=!busy&&_lastDiagnosis is not null;}
 }
