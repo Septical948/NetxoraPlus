@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using DBACheck2.App.Models;
 using DBACheck2.App.Services;
@@ -22,7 +23,7 @@ public partial class MainWindow : Window
         GlobalEngineBox.SelectedItem=DatabaseEngine.SqlServer;
         LanguageBox.SelectedIndex=LocalizationService.Current==AppLanguage.Es?0:1;
         ApplyLanguage();
-        Loaded+=(_,__)=>AssistantButton_Click(this,new RoutedEventArgs());
+        Loaded+=(_,__)=>{UpdateMaximizeButton();AssistantButton_Click(this,new RoutedEventArgs());};
         ServerBox.TextChanged += (_,__) => {
             TargetContextText.Text=string.IsNullOrWhiteSpace(ServerBox.Text)?"Sin destino":ServerBox.Text.Trim();
             SetConnectionState("NO VERIFICADA","#263244","#B7C3D7");
@@ -168,7 +169,7 @@ public partial class MainWindow : Window
         if(SubtitleText is null)return;
         SubtitleText.Text=LocalizationService.T("App.Subtitle"); EngineLabelText.Text=LocalizationService.T("Connection.Engine"); TargetLabelText.Text=LocalizationService.T("Connection.Target");
         TestButton.Content=LocalizationService.T("Connection.Test"); TrustCertBox.Content=LocalizationService.T("Connection.Trust");
-        OperationLabelText.Text=LocalizationService.T("Nav.Operation"); DiagnosticsLabelText.Text=LocalizationService.T("Nav.Diagnostics"); IntegrationsLabelText.Text=LocalizationService.T("Nav.Integrations"); IncidentsLabelText.Text=LocalizationService.T("Nav.Incidents"); QuickButton.Content=LocalizationService.T("Nav.Quick"); IntegrationsButton.Content=LocalizationService.T("Nav.MonitoringIntegrations");
+        OperationLabelText.Text=LocalizationService.T("Nav.Operation"); DiagnosticsExpander.Header=LocalizationService.T("Nav.Diagnostics"); IntegrationsExpander.Header=LocalizationService.T("Nav.Integrations"); IncidentsExpander.Header=LocalizationService.T("Nav.Incidents"); QuickButton.Content=LocalizationService.T("Nav.Quick"); IntegrationsButton.Content=LocalizationService.T("Nav.MonitoringIntegrations");
         HistoryButton.Content=LocalizationService.T("Nav.History"); OperationsButton.Content=LocalizationService.T("Nav.Operations"); AssistantButton.Content=LocalizationService.T("Nav.Assistant");
         CurrentContextLabelText.Text=LocalizationService.T("Context.Current"); AuthenticationText.Text=LocalizationService.T("Context.WindowsAuth");
         QuickTitleText.Text=LocalizationService.T("Quick.Title"); QuickSubtitleText.Text=LocalizationService.T("Quick.Subtitle"); StatusText.Text=LocalizationService.T("Quick.Ready"); DetailText.Text=LocalizationService.T("Quick.SelectEvidence"); InsightHealthLabel.Text=LocalizationService.T("Insight.Health"); InsightAlertLabel.Text=LocalizationService.T("Insight.Alerts"); InsightTopLabel.Text=LocalizationService.T("Insight.Top"); InsightEngineLabel.Text=LocalizationService.T("Insight.Engine");
@@ -185,6 +186,35 @@ public partial class MainWindow : Window
         else if(e==DatabaseEngine.Oracle){IncidentButton.Content=LocalizationService.T("Nav.LongTransactionsOracle"); BlockingButton.Content=LocalizationService.T("Nav.BlockingOracle"); TempDbButton.Content=LocalizationService.T("Nav.TempOracle");LogButton.Content=LocalizationService.T("Nav.LogOracle");BackupJobsButton.Content=LocalizationService.T("Nav.BackupOracle");AlwaysOnButton.Content=LocalizationService.T("Nav.HaOracle");PerformanceButton.Content=LocalizationService.T("Nav.PerfOracle");}
         else if(e==DatabaseEngine.MySqlMariaDb){IncidentButton.Content=LocalizationService.T("Nav.LongTransactionsMySql"); BlockingButton.Content=LocalizationService.T("Nav.BlockingMySql"); TempDbButton.Content=LocalizationService.T("Nav.TempMySql");LogButton.Content=LocalizationService.T("Nav.LogMySql");BackupJobsButton.Content=LocalizationService.T("Nav.BackupMySql");AlwaysOnButton.Content=LocalizationService.T("Nav.HaMySql");PerformanceButton.Content=LocalizationService.T("Nav.PerfMySql");}
         else {IncidentButton.Content=LocalizationService.T("Nav.LongTransactionsSql"); BlockingButton.Content=LocalizationService.T("Nav.BlockingSql"); TempDbButton.Content=LocalizationService.T("Nav.TempSql");LogButton.Content=LocalizationService.T("Nav.LogSql");BackupJobsButton.Content=LocalizationService.T("Nav.BackupSql");AlwaysOnButton.Content=LocalizationService.T("Nav.HaSql");PerformanceButton.Content=LocalizationService.T("Nav.PerfSql");}
+    }
+
+    private void NavExpander_Expanded(object sender,RoutedEventArgs e)
+    {
+        if(sender is not Expander current || DiagnosticsExpander is null || IntegrationsExpander is null || IncidentsExpander is null)return;
+        foreach(var section in new[]{DiagnosticsExpander,IntegrationsExpander,IncidentsExpander})
+            if(!ReferenceEquals(section,current)) section.IsExpanded=false;
+    }
+
+    private void TitleBar_MouseLeftButtonDown(object sender,MouseButtonEventArgs e)
+    {
+        if(e.ChangedButton!=MouseButton.Left)return;
+        if(e.ClickCount==2){ToggleMaximize();return;}
+        if(WindowState==WindowState.Normal)
+        {
+            try{DragMove();}catch{}
+        }
+    }
+
+    private void MinimizeButton_Click(object sender,RoutedEventArgs e)=>WindowState=WindowState.Minimized;
+    private void MaximizeButton_Click(object sender,RoutedEventArgs e)=>ToggleMaximize();
+    private void CloseButton_Click(object sender,RoutedEventArgs e)=>Close();
+    private void MainWindow_StateChanged(object? sender,EventArgs e)=>UpdateMaximizeButton();
+    private void ToggleMaximize()=>WindowState=WindowState==WindowState.Maximized?WindowState.Normal:WindowState.Maximized;
+    private void UpdateMaximizeButton()
+    {
+        if(MaximizeButton is null)return;
+        MaximizeButton.Content=WindowState==WindowState.Maximized?"❐":"□";
+        MaximizeButton.ToolTip=WindowState==WindowState.Maximized?"Restore":"Maximize";
     }
 
     private void HealthGrid_SelectionChanged(object sender,SelectionChangedEventArgs e){if(HealthGrid.SelectedItem is HealthItem item)DetailText.Text=$"{item.Status} | {item.Area}\n{item.Summary}\n\n{item.Detail}";}
