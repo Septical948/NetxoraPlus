@@ -104,6 +104,7 @@ public partial class MainWindow : Window
     private void BackupJobsButton_Click(object sender,RoutedEventArgs e)=>OpenEngine("backup",BackupJobsButton.Content.ToString()!,()=>new BackupJobsAnalyzerWindow(Service()));
     private void AlwaysOnButton_Click(object sender,RoutedEventArgs e)=>OpenEngine("ha",AlwaysOnButton.Content.ToString()!,()=>new AlwaysOnAnalyzerWindow(Service()));
     private void PerformanceButton_Click(object sender,RoutedEventArgs e)=>OpenEngine("performance",PerformanceButton.Content.ToString()!,()=>new PerformanceAnalyzerWindow(Service(),Compat()));
+    private void IntegrationsButton_Click(object sender,RoutedEventArgs e)=>HostAnalyzer(new IntegrationWindow());
     private void HistoryButton_Click(object sender,RoutedEventArgs e){HostAnalyzer(new IncidentHistoryWindow(new IncidentHistoryService()));}
     private void OperationsButton_Click(object sender,RoutedEventArgs e){if(!ValidateTarget())return;HostAnalyzer(new IncidentOperationsWindow(Service()));}
     private void AssistantButton_Click(object sender,RoutedEventArgs e)
@@ -167,7 +168,7 @@ public partial class MainWindow : Window
         if(SubtitleText is null)return;
         SubtitleText.Text=LocalizationService.T("App.Subtitle"); EngineLabelText.Text=LocalizationService.T("Connection.Engine"); TargetLabelText.Text=LocalizationService.T("Connection.Target");
         TestButton.Content=LocalizationService.T("Connection.Test"); TrustCertBox.Content=LocalizationService.T("Connection.Trust");
-        OperationLabelText.Text=LocalizationService.T("Nav.Operation"); DiagnosticsLabelText.Text=LocalizationService.T("Nav.Diagnostics"); IncidentsLabelText.Text=LocalizationService.T("Nav.Incidents"); QuickButton.Content=LocalizationService.T("Nav.Quick");
+        OperationLabelText.Text=LocalizationService.T("Nav.Operation"); DiagnosticsLabelText.Text=LocalizationService.T("Nav.Diagnostics"); IntegrationsLabelText.Text=LocalizationService.T("Nav.Integrations"); IncidentsLabelText.Text=LocalizationService.T("Nav.Incidents"); QuickButton.Content=LocalizationService.T("Nav.Quick"); IntegrationsButton.Content=LocalizationService.T("Nav.MonitoringIntegrations");
         HistoryButton.Content=LocalizationService.T("Nav.History"); OperationsButton.Content=LocalizationService.T("Nav.Operations"); AssistantButton.Content=LocalizationService.T("Nav.Assistant");
         CurrentContextLabelText.Text=LocalizationService.T("Context.Current"); AuthenticationText.Text=LocalizationService.T("Context.WindowsAuth");
         QuickTitleText.Text=LocalizationService.T("Quick.Title"); QuickSubtitleText.Text=LocalizationService.T("Quick.Subtitle"); StatusText.Text=LocalizationService.T("Quick.Ready"); DetailText.Text=LocalizationService.T("Quick.SelectEvidence"); InsightHealthLabel.Text=LocalizationService.T("Insight.Health"); InsightAlertLabel.Text=LocalizationService.T("Insight.Alerts"); InsightTopLabel.Text=LocalizationService.T("Insight.Top"); InsightEngineLabel.Text=LocalizationService.T("Insight.Engine");
@@ -188,6 +189,6 @@ public partial class MainWindow : Window
 
     private void HealthGrid_SelectionChanged(object sender,SelectionChangedEventArgs e){if(HealthGrid.SelectedItem is HealthItem item)DetailText.Text=$"{item.Status} | {item.Area}\n{item.Summary}\n\n{item.Detail}";}
     private void EvidenceExpandButton_Click(object sender,RoutedEventArgs e){var expanded=DetailText.MaxHeight>200;DetailText.MaxHeight=expanded?120:360;EvidenceExpandButton.Content=expanded?(LocalizationService.Current==AppLanguage.En?"EXPAND":"EXPANDIR"):(LocalizationService.Current==AppLanguage.En?"COLLAPSE":"CONTRAER");}
-    private void SetBusy(bool busy,string? text=null){TestButton.IsEnabled=!busy;QuickButton.IsEnabled=!busy;IncidentButton.IsEnabled=!busy;BlockingButton.IsEnabled=!busy;TempDbButton.IsEnabled=!busy;LogButton.IsEnabled=!busy;BackupJobsButton.IsEnabled=!busy;AlwaysOnButton.IsEnabled=!busy;PerformanceButton.IsEnabled=!busy;HistoryButton.IsEnabled=!busy;OperationsButton.IsEnabled=!busy;AssistantButton.IsEnabled=!busy;if(text!=null)StatusText.Text=text;}
+    private void SetBusy(bool busy,string? text=null){TestButton.IsEnabled=!busy;QuickButton.IsEnabled=!busy;IncidentButton.IsEnabled=!busy;BlockingButton.IsEnabled=!busy;TempDbButton.IsEnabled=!busy;LogButton.IsEnabled=!busy;BackupJobsButton.IsEnabled=!busy;AlwaysOnButton.IsEnabled=!busy;PerformanceButton.IsEnabled=!busy;IntegrationsButton.IsEnabled=!busy;HistoryButton.IsEnabled=!busy;OperationsButton.IsEnabled=!busy;AssistantButton.IsEnabled=!busy;if(text!=null)StatusText.Text=text;}
     private void SetConnectionState(string text,string background,string foreground){ConnectionStateText.Text=text;ConnectionBadge.Background=(Brush)new BrushConverter().ConvertFromString(background)!;ConnectionStateText.Foreground=(Brush)new BrushConverter().ConvertFromString(foreground)!;}
 }
