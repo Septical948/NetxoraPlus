@@ -8,7 +8,7 @@
  <Style TargetType="DataGridCell"><Setter Property="Padding" Value="5,3"/></Style>
 </Window.Resources>
 <Grid Margin="16">
- <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="220"/></Grid.RowDefinitions>
+ <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition x:Name="DetailRow" Height="170"/></Grid.RowDefinitions>
  <StackPanel><TextBlock x:Name="TitleText" Text="INCIDENT ANALYZER · ALWAYSON / HA" Foreground="#38E8D0" FontSize="26" FontWeight="Bold"/><TextBlock x:Name="SubtitleText" Text="Beta 1 · Availability Groups · Replicas · Databases · Queues · Listener · Evidence · Read-only" Foreground="#B7C3D7"/></StackPanel>
  <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,14,0,10">
   <Button x:Name="RefreshButton" Padding="18,8" Content="ACTUALIZAR" Click="RefreshButton_Click"/>
@@ -37,7 +37,7 @@
    <DataGridTextColumn Header="Redo KB/s" Binding="{Binding RedoRateKb}" Width="90"/>
   </DataGrid.Columns>
  </DataGrid>
- <TextBlock Grid.Row="4" Margin="0,12,0,6" Foreground="#38E8D0" FontWeight="Bold" Text="EVIDENCIA / DIAGNÓSTICO ALWAYSON"/>
+ <Grid Grid.Row="4" Margin="0,12,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Foreground="#38E8D0" FontWeight="Bold" Text="EVIDENCIA / DIAGNÓSTICO ALWAYSON"/><Button x:Name="ExpandDetailButton" Grid.Column="1" Content="EXPANDIR" Padding="12,4" Click="ExpandDetailButton_Click"/></Grid>
  <TextBox Grid.Row="5" x:Name="DetailText" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Background="#111C2F" Foreground="White" BorderThickness="0" Padding="12" FontFamily="Consolas" Text="Selecciona una réplica/base para investigar."/>
 </Grid>
 </Window>
