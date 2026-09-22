@@ -96,7 +96,8 @@ Acknowledged: {e.Acknowledged} | Suppressed: {e.Suppressed}
 Tags: {e.Tags}
 Detail: {e.RawDetail}"));
 
-        return $@"{x.Priority} | SCORE {x.PriorityScore}/100 | {x.State}
+        return En
+            ? $@"{x.Priority} | SCORE {x.PriorityScore}/100 | {x.State}
 Host: {x.Host}
 Environment: {x.Environment}
 Category: {x.Category}
@@ -114,8 +115,28 @@ MONITORING EVENTS
 
 NEXT STEP
 {(x.ProfileMatched
-    ? (En?"Select DIAGNOSE SELECTED to connect only to this matched database target and collect targeted DB evidence.":"Elegí DIAGNOSTICAR SELECCIONADO para conectar únicamente al destino asociado y recolectar evidencia DB dirigida.")
-    : (En?"Create or map a DBACHECK server profile before database diagnosis.":"Creá o asociá un perfil DBACHECK antes del diagnóstico de base."))}";
+    ?"Select DIAGNOSE SELECTED to connect only to this matched database target and collect targeted DB evidence."
+    :"Create or map a DBACHECK server profile before database diagnosis.")}"
+            : $@"{x.Priority} | SCORE {x.PriorityScore}/100 | {x.State}
+Host: {x.Host}
+Ambiente: {x.Environment}
+Categoría: {x.Category}
+Fuentes: {x.Sources}
+Alertas agrupadas: {x.AlertCount}
+Antigüedad: {x.AgeText}
+Perfil asociado: {(x.ProfileMatched?x.ProfileName:"NO")}
+Motivo del match: {x.MatchReason}
+
+POR QUÉ TIENE ESTA PRIORIDAD
+{x.PriorityReason}
+
+ALERTAS DE MONITOREO
+{events}
+
+SIGUIENTE PASO
+{(x.ProfileMatched
+    ?"Elegí DIAGNOSTICAR SELECCIONADO para conectar únicamente al destino asociado y recolectar evidencia DB dirigida."
+    :"Creá o asociá un perfil DBACHECK antes del diagnóstico de base.")}";
     }
 
     private async void DiagnoseButton_Click(object sender,RoutedEventArgs e)
@@ -153,7 +174,17 @@ NEXT STEP
         try
         {
             SetBusy(true);
-            var diagnosis=_lastDiagnosis.ToIncidentDiagnosis();
+            var baseDiagnosis=_lastDiagnosis.ToIncidentDiagnosis();
+            var diagnosis=new IncidentDiagnosis {
+                Severity=baseDiagnosis.Severity,
+                Problem=baseDiagnosis.Problem,
+                ProbableCause=baseDiagnosis.ProbableCause,
+                Evidence=baseDiagnosis.Evidence+"\n\nALERT INBOX GROUP\n"+BuildDetail(item),
+                RecommendedAction=baseDiagnosis.RecommendedAction,
+                DbaAction=baseDiagnosis.DbaAction,
+                Verification=baseDiagnosis.Verification,
+                Safety=baseDiagnosis.Safety
+            };
             var id=await _history.SaveAsync(_lastDiagnosis.Profile.Host,_lastDiagnosis.Profile.DatabaseOrService??"","Alert Inbox",diagnosis);
             item.State="INCIDENT";
             RefreshGridSelection(item);
