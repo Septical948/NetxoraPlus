@@ -36,7 +36,7 @@
                                           HorizontalContentAlignment="Stretch">
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding Header, RelativeSource={RelativeSource AncestorType=Expander}}" FontSize="10" FontWeight="Bold" Foreground="#8F9BB3"/>
+                                    <ContentPresenter Content="{TemplateBinding Header}" VerticalAlignment="Center"/>
                                     <TextBlock x:Name="Arrow" Grid.Column="1" Text="▸" Foreground="#718096" FontSize="12" Margin="8,0,2,0"/>
                                 </Grid>
                             </ToggleButton>
