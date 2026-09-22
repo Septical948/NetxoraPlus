@@ -2,7 +2,7 @@ using System.Windows; using System.Windows.Controls; using DBACheck2.App.Models;
 namespace DBACheck2.App;
 public partial class BackupJobsAnalyzerWindow:Window
 {
- readonly SqlHealthService _service; public BackupJobsAnalyzerWindow(SqlHealthService s){InitializeComponent();_service=s;Loaded+=async(_,__)=>await LoadAsync();}
+ readonly SqlHealthService _service; public BackupJobsAnalyzerWindow(SqlHealthService s){InitializeComponent();_service=s;ApplyLanguage();Loaded+=async(_,__)=>await LoadAsync();}\n void ApplyLanguage(){var en=LocalizationService.Current==AppLanguage.En;RefreshButton.Content=en?"REFRESH":"ACTUALIZAR";DiagnosisButton.Content=en?"DIAGNOSIS":"DIAGNÓSTICO";HistoryButton.Content=en?"VIEW HISTORY":"VER HISTORIAL";EvidenceButton.Content=en?"CAPTURE EVIDENCE":"CAPTURAR EVIDENCIA";StatusColumn.Header=en?"Status":"Estado";DetailText.Text=en?"Select a database or job to investigate.":"Selecciona una base o job para investigar.";}
  async Task LoadAsync()
  {
      try
