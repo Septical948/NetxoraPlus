@@ -103,9 +103,6 @@ public static class UiLocalizationService
             case ContentControl cc when cc.Content is DependencyObject child:
                 Walk(child,en);
                 break;
-            case ScrollViewer sv when sv.Content is DependencyObject child:
-                Walk(child,en);
-                break;
             case ItemsControl ic when obj is not DataGrid:
                 foreach(var item in ic.Items)
                     if(item is DependencyObject child) Walk(child,en);
