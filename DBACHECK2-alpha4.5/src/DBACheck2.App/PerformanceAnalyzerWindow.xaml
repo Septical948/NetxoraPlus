@@ -8,7 +8,7 @@
  <Style TargetType="DataGridCell"><Setter Property="Padding" Value="5,3"/></Style>
 </Window.Resources>
 <Grid Margin="12">
- <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="230"/></Grid.RowDefinitions>
+ <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition x:Name="DetailRow" Height="170"/></Grid.RowDefinitions>
  <StackPanel><TextBlock x:Name="TitleText" Text="INCIDENT ANALYZER · PERFORMANCE" Foreground="#38E8D0" FontSize="26" FontWeight="Bold"/><TextBlock x:Name="SubtitleText" Text="Beta 1 · Active Requests · CPU · I/O · Waits · Blocking · Memory Grants · Evidence · Read-only" Foreground="#B7C3D7"/></StackPanel>
  <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,10">
   <Button x:Name="RefreshButton" Padding="16,8" Content="ACTUALIZAR" Click="RefreshButton_Click"/>
@@ -40,7 +40,7 @@
    <DataGridTextColumn Header="Command" Binding="{Binding Command}" Width="120"/>
   </DataGrid.Columns>
  </DataGrid>
- <TextBlock Grid.Row="4" Margin="0,12,0,6" Foreground="#38E8D0" FontWeight="Bold" Text="EVIDENCIA / DIAGNÓSTICO PERFORMANCE"/>
+ <Grid Grid.Row="4" Margin="0,12,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Foreground="#38E8D0" FontWeight="Bold" Text="EVIDENCIA / DIAGNÓSTICO PERFORMANCE"/><Button x:Name="ExpandDetailButton" Grid.Column="1" Content="EXPANDIR" Padding="12,4" Click="ExpandDetailButton_Click"/></Grid>
  <TextBox Grid.Row="5" x:Name="DetailText" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Background="#111C2F" Foreground="White" BorderThickness="0" Padding="12" FontFamily="Consolas" Text="Selecciona un request para investigar."/>
 </Grid>
 </Window>
