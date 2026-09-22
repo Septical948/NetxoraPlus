@@ -72,7 +72,15 @@
                     <DataGrid x:Name="HealthGrid" Grid.Row="3" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal" Background="#111C2F" Foreground="White" RowBackground="#111C2F" AlternatingRowBackground="#16243A" BorderThickness="0" FontSize="14" SelectionChanged="HealthGrid_SelectionChanged">
                         <DataGrid.Columns><DataGridTextColumn x:Name="StatusColumn" Header="Estado" Binding="{Binding Status}" Width="100"/><DataGridTextColumn x:Name="AreaColumn" Header="Área" Binding="{Binding Area}" Width="150"/><DataGridTextColumn x:Name="SummaryColumn" Header="Resumen" Binding="{Binding Summary}" Width="310"/><DataGridTextColumn x:Name="EvidenceColumn" Header="Evidencia / detalle" Binding="{Binding Detail}" Width="*"/></DataGrid.Columns>
                     </DataGrid>
-                    <Border Grid.Row="4" Margin="0,12,0,0" Background="#111C2F" CornerRadius="6" Padding="12"><StackPanel><TextBlock x:Name="EvidenceTitleText" Text="EVIDENCIA DEL CHECK SELECCIONADO" Foreground="#38E8D0" FontWeight="Bold" Margin="0,0,0,6"/><TextBlock x:Name="DetailText" Foreground="#D5DEEB" TextWrapping="Wrap" MaxHeight="105" Text="Seleccioná una fila para ver la evidencia completa."/></StackPanel></Border>
+                    <Border Grid.Row="4" Margin="0,12,0,0" Background="#111C2F" CornerRadius="6" Padding="12">
+ <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+   <TextBlock x:Name="EvidenceTitleText" Text="EVIDENCIA DEL CHECK SELECCIONADO" Foreground="#38E8D0" FontWeight="Bold" VerticalAlignment="Center"/>
+   <Button x:Name="EvidenceExpandButton" Grid.Column="1" Content="EXPANDIR" Padding="12,4" Click="EvidenceExpandButton_Click"/>
+  </Grid>
+  <TextBox x:Name="DetailText" Grid.Row="1" Margin="0,8,0,0" Foreground="#D5DEEB" Background="Transparent" BorderThickness="0" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" MaxHeight="120" Text="Seleccioná una fila para ver la evidencia completa."/>
+ </Grid>
+</Border>
                 </Grid>
 
                 <!-- Existing analyzers are hosted here instead of ShowDialog -->
