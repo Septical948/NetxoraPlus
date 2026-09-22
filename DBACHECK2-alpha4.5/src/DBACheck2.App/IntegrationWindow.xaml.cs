@@ -84,16 +84,11 @@ public partial class IntegrationWindow:Window
         StatusText.Text=En?$"Integration profile '{p.Name}' deleted.":$"Perfil de integración '{p.Name}' eliminado.";
     }
 
-    private ZabbixIntegrationClient Zabbix()
-    {
-        var p=Current();
-        if(p.Source!=IntegrationSource.Zabbix)throw new NotSupportedException($"{p.Source} adapter is planned; Zabbix is the first enabled integration.");
-        return new ZabbixIntegrationClient(p);
-    }
+    private IIntegrationProvider Provider()=>IntegrationProviderFactory.Create(Current());
 
     private async void Test_Click(object s,RoutedEventArgs e)
     {
-        try{SetBusy(true);StatusText.Text=En?"Testing monitoring API...":"Probando API de monitoreo...";StatusText.Text=await Zabbix().TestAsync();}
+        try{SetBusy(true);StatusText.Text=En?"Testing monitoring API...":"Probando API de monitoreo...";StatusText.Text=await Provider().TestAsync();}
         catch(Exception ex){StatusText.Text="ERROR: "+ex.Message;}
         finally{SetBusy(false);}
     }
@@ -102,7 +97,7 @@ public partial class IntegrationWindow:Window
     {
         try{
             SetBusy(true);StatusText.Text=En?"Loading open monitoring problems...":"Cargando problemas abiertos de monitoreo...";
-            var rows=await Zabbix().GetOpenProblemsAsync(100);EventsGrid.ItemsSource=rows;
+            var rows=await Provider().GetOpenEventsAsync(100);EventsGrid.ItemsSource=rows;
             var critical=rows.Count(x=>x.Severity=="CRITICAL");var warnings=rows.Count(x=>x.Severity=="WARNING");
             StatusText.Text=En?$"{rows.Count} open problem(s) | Critical {critical} | Warning {warnings}":$"{rows.Count} problema(s) abierto(s) | Críticos {critical} | Warning {warnings}";
         }catch(Exception ex){StatusText.Text="ERROR: "+ex.Message;}
