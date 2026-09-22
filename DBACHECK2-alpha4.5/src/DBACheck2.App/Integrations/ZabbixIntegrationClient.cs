@@ -6,11 +6,13 @@ using DBACheck2.App.Services;
 
 namespace DBACheck2.App.Integrations;
 
-public sealed class ZabbixIntegrationClient
+public sealed class ZabbixIntegrationClient:IIntegrationProvider
 {
     private readonly IntegrationConnectionProfile _profile;
 
     public ZabbixIntegrationClient(IntegrationConnectionProfile profile)=>_profile=profile;
+    public IntegrationSource Source=>IntegrationSource.Zabbix;
+    public string DisplayName=>"Zabbix";
 
     private string ApiUrl()
     {
@@ -38,7 +40,7 @@ public sealed class ZabbixIntegrationClient
         return $"Zabbix API {version.GetString()} | Authentication OK | Accessible host sample: {hosts.GetArrayLength()}";
     }
 
-    public async Task<List<IntegrationEvent>> GetOpenProblemsAsync(int limit=100)
+    public async Task<List<IntegrationEvent>> GetOpenEventsAsync(int limit=100)
     {
         if(string.IsNullOrWhiteSpace(_profile.Token)) throw new InvalidOperationException("Zabbix API token is required.");
         var problems=await CallAuthenticatedAsync("problem.get",new {
