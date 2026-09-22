@@ -35,4 +35,5 @@ public partial class IncidentHistoryWindow:Window
    if(ok!=MessageBoxResult.Yes)return;
    await _history.ResolveAsync(x.Id,action,verification); await LoadAsync(); DetailText.Text=En?$"Incident #{x.Id} marked RESOLVED.\n\nACTION\n{action}\n\nVERIFICATION\n{verification}":$"Incidente #{x.Id} marcado RESOLVED.\n\nACCIÓN\n{action}\n\nVERIFICACIÓN\n{verification}"; ActionBox.Clear();VerificationBox.Clear();ResolveButton.IsEnabled=false;
  }
+    private void ExpandDetailButton_Click(object sender,RoutedEventArgs e)=>DetailPanelService.Toggle(DetailRow,ExpandDetailButton);
 }
