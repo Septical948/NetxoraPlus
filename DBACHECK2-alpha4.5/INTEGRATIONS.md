@@ -74,3 +74,40 @@ This first layer produces a diagnostic direction only. The next step is target/p
 4. Add Nagios adapter.
 5. Add Prometheus/Alertmanager adapter.
 6. Add webhook/push ingestion in addition to pull/API mode.
+
+
+## Event -> DB diagnosis vertical slice
+
+The first end-to-end correlation path is now implemented.
+
+1. Load an external monitoring event.
+2. Resolve the event host to a saved DBACHECK server profile.
+3. Test the matched database provider.
+4. Run the provider Quick Check.
+5. Filter the returned checks according to the external event category.
+6. Show the correlated database evidence.
+7. Optionally create an Incident History record from the correlation result.
+
+Profile resolution precedence:
+- Zabbix/monitoring tag `dbacheck_profile=<saved profile name>`
+- exact external host -> profile Host
+- exact external host -> profile Name
+- unique short-host match
+
+If the monitoring host name differs from the DBACHECK profile, the recommended explicit mapping is a monitoring tag such as:
+
+```
+dbacheck_profile=PROD-SQL01
+```
+
+Current correlation categories:
+- Storage
+- Log/WAL
+- Locking
+- HA/Replication
+- Backup
+- Performance
+- Availability
+- General
+
+No ACK, silence, remote action or database corrective action is executed by this flow.
