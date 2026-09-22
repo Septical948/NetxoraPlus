@@ -129,6 +129,7 @@ public partial class MainWindow : Window
         }
         catch(Exception ex)
         {
+            SetConnectionState("ERROR","#5A2A2A","#FFD1D1");
             window.SetConnectionError($"{LocalizationService.T("Profiles.ConnectionFailed")}\n{ex.Message}");
         }
     }
