@@ -91,7 +91,7 @@ public partial class MainWindow : Window
     }
 
     private void ShowQuickCheck(){ReleaseHostedAnalyzer();ModuleHost.Visibility=Visibility.Collapsed;QuickCheckView.Visibility=Visibility.Visible;}
-    private void HostAnalyzer(Window analyzer){ReleaseHostedAnalyzer();QuickCheckView.Visibility=Visibility.Collapsed;ModuleHost.Visibility=Visibility.Visible;var content=analyzer.Content as UIElement;analyzer.Content=null;_hostedAnalyzer=analyzer;ModuleHost.Content=content;analyzer.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));}
+    private void HostAnalyzer(Window analyzer){ReleaseHostedAnalyzer();QuickCheckView.Visibility=Visibility.Collapsed;ModuleHost.Visibility=Visibility.Visible;var content=analyzer.Content as UIElement;analyzer.Content=null;_hostedAnalyzer=analyzer;ModuleHost.Content=content;analyzer.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));UiLocalizationService.Apply(ModuleHost);}
     private void ReleaseHostedAnalyzer(){ModuleHost.Content=null;_hostedAnalyzer=null;}
 
     private bool IsSql=>_activeEngine==DatabaseEngine.SqlServer;
@@ -159,7 +159,7 @@ public partial class MainWindow : Window
     {
         if(!IsLoaded && LanguageBox.SelectedItem is null)return;
         var lang=LanguageBox.SelectedIndex==1?AppLanguage.En:AppLanguage.Es;
-        LocalizationService.Set(lang); ApplyLanguage();
+        LocalizationService.Set(lang); ApplyLanguage(); UiLocalizationService.Apply(ModuleHost);
     }
 
     private void ApplyLanguage()
