@@ -39,4 +39,5 @@ public partial class LogAnalyzerWindow : Window
         try { var t=await _service.BuildLogEvidenceAsync(x); var d=IncidentDiagnosisEngine.DiagnoseLog(x); var server=await _service.TestAsync(); var id=await _history.SaveAsync(server,x.DatabaseName,"Transaction Log",d); var count=await _history.RecurrenceCountAsync(server,x.DatabaseName,"Transaction Log",d.ProbableCause); DetailText.Text=t+"\n\n"+d+$"\n\nINCIDENT HISTORY\nIncident #{id} guardado. Ocurrencias registradas: {count}."; Clipboard.SetText(DetailText.Text); AnalyzerStatus.Text=$"Evidence Snapshot + Incident #{id} guardado."; }
         catch(Exception ex){ AnalyzerStatus.Text="ERROR: "+ex.Message; }
     }
+    private void ExpandDetailButton_Click(object sender,RoutedEventArgs e)=>DetailPanelService.Toggle(DetailRow,ExpandDetailButton);
 }
