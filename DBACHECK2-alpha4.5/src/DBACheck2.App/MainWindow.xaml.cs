@@ -1,7 +1,9 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using DBACheck2.App.Models;
 using DBACheck2.App.Services;
@@ -23,6 +25,7 @@ public partial class MainWindow : Window
         GlobalEngineBox.SelectedItem=DatabaseEngine.SqlServer;
         LanguageBox.SelectedIndex=LocalizationService.Current==AppLanguage.Es?0:1;
         ApplyLanguage();
+        SourceInitialized+=(_,__)=>((HwndSource)PresentationSource.FromVisual(this)).AddHook(WindowProc);
         Loaded+=async(_,__)=>{UpdateMaximizeButton();await OpenStartupViewAsync();};
         ServerBox.TextChanged += (_,__) => {
             TargetContextText.Text=string.IsNullOrWhiteSpace(ServerBox.Text)?"Sin destino":ServerBox.Text.Trim();
@@ -200,6 +203,66 @@ public partial class MainWindow : Window
         else if(e==DatabaseEngine.Oracle){IncidentButton.Content=LocalizationService.T("Nav.LongTransactionsOracle"); BlockingButton.Content=LocalizationService.T("Nav.BlockingOracle"); TempDbButton.Content=LocalizationService.T("Nav.TempOracle");LogButton.Content=LocalizationService.T("Nav.LogOracle");BackupJobsButton.Content=LocalizationService.T("Nav.BackupOracle");AlwaysOnButton.Content=LocalizationService.T("Nav.HaOracle");PerformanceButton.Content=LocalizationService.T("Nav.PerfOracle");}
         else if(e==DatabaseEngine.MySqlMariaDb){IncidentButton.Content=LocalizationService.T("Nav.LongTransactionsMySql"); BlockingButton.Content=LocalizationService.T("Nav.BlockingMySql"); TempDbButton.Content=LocalizationService.T("Nav.TempMySql");LogButton.Content=LocalizationService.T("Nav.LogMySql");BackupJobsButton.Content=LocalizationService.T("Nav.BackupMySql");AlwaysOnButton.Content=LocalizationService.T("Nav.HaMySql");PerformanceButton.Content=LocalizationService.T("Nav.PerfMySql");}
         else {IncidentButton.Content=LocalizationService.T("Nav.LongTransactionsSql"); BlockingButton.Content=LocalizationService.T("Nav.BlockingSql"); TempDbButton.Content=LocalizationService.T("Nav.TempSql");LogButton.Content=LocalizationService.T("Nav.LogSql");BackupJobsButton.Content=LocalizationService.T("Nav.BackupSql");AlwaysOnButton.Content=LocalizationService.T("Nav.HaSql");PerformanceButton.Content=LocalizationService.T("Nav.PerfSql");}
+    }
+
+
+    private const int WM_GETMINMAXINFO=0x0024;
+    private const uint MONITOR_DEFAULTTONEAREST=0x00000002;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT { public int X; public int Y; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MINMAXINFO
+    {
+        public POINT ptReserved;
+        public POINT ptMaxSize;
+        public POINT ptMaxPosition;
+        public POINT ptMinTrackSize;
+        public POINT ptMaxTrackSize;
+    }
+
+    [StructLayout(LayoutKind.Sequential,CharSet=CharSet.Auto)]
+    private struct MONITORINFO
+    {
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hwnd,uint dwFlags);
+
+    [DllImport("user32.dll",CharSet=CharSet.Auto)]
+    [return:MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetMonitorInfo(IntPtr hMonitor,ref MONITORINFO lpmi);
+
+    private IntPtr WindowProc(IntPtr hwnd,int msg,IntPtr wParam,IntPtr lParam,ref bool handled)
+    {
+        if(msg!=WM_GETMINMAXINFO || lParam==IntPtr.Zero) return IntPtr.Zero;
+
+        var monitor=MonitorFromWindow(hwnd,MONITOR_DEFAULTTONEAREST);
+        if(monitor==IntPtr.Zero) return IntPtr.Zero;
+
+        var info=new MONITORINFO{cbSize=Marshal.SizeOf<MONITORINFO>()};
+        if(!GetMonitorInfo(monitor,ref info)) return IntPtr.Zero;
+
+        var mmi=Marshal.PtrToStructure<MINMAXINFO>(lParam);
+        var work=info.rcWork;
+        var area=info.rcMonitor;
+
+        mmi.ptMaxPosition.X=Math.Abs(work.Left-area.Left);
+        mmi.ptMaxPosition.Y=Math.Abs(work.Top-area.Top);
+        mmi.ptMaxSize.X=Math.Abs(work.Right-work.Left);
+        mmi.ptMaxSize.Y=Math.Abs(work.Bottom-work.Top);
+
+        Marshal.StructureToPtr(mmi,lParam,true);
+        handled=true;
+        return IntPtr.Zero;
     }
 
     private void NavExpander_Expanded(object sender,RoutedEventArgs e)
