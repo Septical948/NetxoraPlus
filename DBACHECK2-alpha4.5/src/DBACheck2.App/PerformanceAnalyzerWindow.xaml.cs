@@ -21,4 +21,5 @@ public partial class PerformanceAnalyzerWindow : Window
     private async void WaitsButton_Click(object sender,RoutedEventArgs e){try{DetailText.Text=await _service.GetPerformanceWaitsAsync();AnalyzerStatus.Text="Waits actuales consultados.";}catch(Exception ex){AnalyzerStatus.Text="ERROR waits: "+ex.Message;}}
     private async void MemoryButton_Click(object sender,RoutedEventArgs e){try{DetailText.Text=await _service.GetMemoryGrantsAsync();AnalyzerStatus.Text="Memory Grants consultados.";}catch(Exception ex){AnalyzerStatus.Text="ERROR memory grants: "+ex.Message;}}
     private void EvidenceButton_Click(object sender,RoutedEventArgs e){if(RequestGrid.SelectedItem is not PerformanceRequest x)return;var snapshot=SqlHealthService.BuildPerformanceEvidence(x);DetailText.Text=snapshot;Clipboard.SetText(snapshot);AnalyzerStatus.Text=$"Evidence Snapshot SPID {x.SessionId} copiado.";}
+    private void ExpandDetailButton_Click(object sender,RoutedEventArgs e)=>DetailPanelService.Toggle(DetailRow,ExpandDetailButton);
 }
