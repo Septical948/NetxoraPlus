@@ -111,3 +111,43 @@ Current correlation categories:
 - General
 
 No ACK, silence, remote action or database corrective action is executed by this flow.
+
+
+## Alert Inbox
+
+Alert Inbox is the DBA morning operations queue.
+
+When at least one monitoring integration profile is configured, DBACHECK2 opens the Alert Inbox at startup and reads external monitoring sources before any database connection is required.
+
+Current flow:
+
+1. Read configured monitoring sources.
+2. Normalize events to `IntegrationEvent`.
+3. Group related alerts by short host + operational category.
+4. Resolve the group to a saved DBACHECK server profile without connecting to the database.
+5. Calculate an operational priority (P1-P4).
+6. Present the queue ordered by priority.
+7. Connect to the database only when the DBA selects `DIAGNOSE SELECTED`.
+8. Optionally create an Incident History record after database evidence is collected.
+
+Priority currently considers:
+- external monitor severity
+- PROD / QA / DEV environment when a DB profile is matched
+- alert age
+- acknowledged state
+- monitoring category
+- number of independent monitoring sources reporting the condition
+
+The original monitoring severity is preserved separately from DBACHECK operational priority.
+
+### Local snapshot
+
+The last successful Alert Inbox snapshot is stored locally in:
+
+`%LOCALAPPDATA%\Netxora\DBACHECK2\alert-inbox.db`
+
+If all monitoring APIs are temporarily unavailable, DBACHECK can display the last successful snapshot as `CACHED`. This is a fallback view and is not presented as current monitoring state.
+
+### Important boundary
+
+Opening Alert Inbox does not connect to SQL Server, PostgreSQL, Oracle or MySQL/MariaDB. Database access starts only when the operator requests targeted diagnosis.
