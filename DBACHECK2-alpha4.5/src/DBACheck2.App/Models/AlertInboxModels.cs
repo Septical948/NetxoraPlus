@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace DBACheck2.App.Models;
 
 public sealed class AlertInboxItem
@@ -19,6 +21,7 @@ public sealed class AlertInboxItem
     public string PriorityReason { get; set; } = "";
     public bool ProfileMatched { get; set; }
     public List<IntegrationEvent> Events { get; set; } = new();
+    [JsonIgnore]
     public IntegrationEvent PrimaryEvent => Events.OrderByDescending(x=>SeverityRank(x.Severity)).ThenBy(x=>x.Timestamp).FirstOrDefault() ?? new();
 
     private static int SeverityRank(string value)=>value switch
