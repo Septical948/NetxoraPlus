@@ -13,11 +13,10 @@ public partial class AlwaysOnAnalyzerWindow : Window
     public AlwaysOnAnalyzerWindow(SqlHealthService service)
     {
         InitializeComponent();
-        _service = service;
-        Loaded += async (_,__) => await LoadAsync();
+        _service = service; ApplyLanguage();\n        Loaded += async (_,__) => await LoadAsync();
     }
 
-    private async Task LoadAsync()
+    private void ApplyLanguage(){var en=LocalizationService.Current==AppLanguage.En;RefreshButton.Content=en?"REFRESH":"ACTUALIZAR";DiagnosticButton.Content=en?"DIAGNOSIS":"DIAGNÓSTICO";ReplicaButton.Content=en?"VIEW REPLICA":"VER RÉPLICA";DatabaseButton.Content=en?"VIEW DATABASE":"VER DATABASE";ListenerButton.Content=en?"VIEW LISTENER":"VER LISTENER";EvidenceButton.Content=en?"CAPTURE EVIDENCE":"CAPTURAR EVIDENCIA";StatusColumn.Header=en?"Status":"Estado";DetailText.Text=en?"Select a replica/database to investigate.":"Selecciona una réplica/base para investigar."; }\n\n    private async Task LoadAsync()
     {
         try
         {
