@@ -40,6 +40,8 @@
                         <Button x:Name="BackupJobsButton" Style="{StaticResource NavButton}" Content="Backups / Jobs" Click="BackupJobsButton_Click"/>
                         <Button x:Name="AlwaysOnButton" Style="{StaticResource NavButton}" Content="AlwaysOn / HA" Click="AlwaysOnButton_Click"/>
                         <Button x:Name="PerformanceButton" Style="{StaticResource NavButton}" Content="Performance" Click="PerformanceButton_Click"/>
+                        <TextBlock x:Name="IntegrationsLabelText" Text="INTEGRATIONS" Foreground="#8F9BB3" FontSize="10" FontWeight="Bold" Margin="6,9,0,9"/>
+                        <Button x:Name="IntegrationsButton" Style="{StaticResource NavButton}" Content="Monitoring Integrations" Click="IntegrationsButton_Click"/>
                         <TextBlock x:Name="IncidentsLabelText" Text="INCIDENTS" Foreground="#8F9BB3" FontSize="10" FontWeight="Bold" Margin="6,9,0,9"/>
                         <Button x:Name="HistoryButton" Style="{StaticResource NavButton}" Content="Incident History" Click="HistoryButton_Click"/>
                         <Button x:Name="OperationsButton" Style="{StaticResource NavButton}" Content="Incident Operations" Click="OperationsButton_Click"/>
