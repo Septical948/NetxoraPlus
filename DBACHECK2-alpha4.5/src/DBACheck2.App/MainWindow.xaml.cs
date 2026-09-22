@@ -123,6 +123,7 @@ public partial class MainWindow : Window
             var provider=DatabaseProviderFactory.Create(profile);
             var info=await provider.TestAsync();
             ActivateProfile(profile);
+            SetConnectionState("CONNECTED","#173D35","#77E6CE");
             window.SetConnectionSuccess($"{LocalizationService.T("Profiles.ConnectionOk")}\n{provider.DisplayName} | {info.Replace("\n"," | ")}");
             QuickButton_Click(this,new RoutedEventArgs());
         }
@@ -171,7 +172,7 @@ public partial class MainWindow : Window
         TestButton.Content=LocalizationService.T("Connection.Test"); TrustCertBox.Content=LocalizationService.T("Connection.Trust");
         OperationLabelText.Text=LocalizationService.T("Nav.Operation"); DiagnosticsExpander.Header=LocalizationService.T("Nav.Diagnostics"); IntegrationsExpander.Header=LocalizationService.T("Nav.Integrations"); IncidentsExpander.Header=LocalizationService.T("Nav.Incidents"); QuickButton.Content=LocalizationService.T("Nav.Quick"); IntegrationsButton.Content=LocalizationService.T("Nav.MonitoringIntegrations");
         HistoryButton.Content=LocalizationService.T("Nav.History"); OperationsButton.Content=LocalizationService.T("Nav.Operations"); AssistantButton.Content=LocalizationService.T("Nav.Assistant");
-        CurrentContextLabelText.Text=LocalizationService.T("Context.Current"); AuthenticationText.Text=LocalizationService.T("Context.WindowsAuth");
+        CurrentContextLabelText.Text=LocalizationService.T("Context.Current"); AuthenticationText.Text=LocalizationService.T("Context.WindowsAuth"); UpdateVisibleConnectionState();
         QuickTitleText.Text=LocalizationService.T("Quick.Title"); QuickSubtitleText.Text=LocalizationService.T("Quick.Subtitle"); StatusText.Text=LocalizationService.T("Quick.Ready"); DetailText.Text=LocalizationService.T("Quick.SelectEvidence"); InsightHealthLabel.Text=LocalizationService.T("Insight.Health"); InsightAlertLabel.Text=LocalizationService.T("Insight.Alerts"); InsightTopLabel.Text=LocalizationService.T("Insight.Top"); InsightEngineLabel.Text=LocalizationService.T("Insight.Engine");
         StatusColumn.Header=LocalizationService.T("Grid.Status"); AreaColumn.Header=LocalizationService.T("Grid.Area"); SummaryColumn.Header=LocalizationService.T("Grid.Summary"); EvidenceColumn.Header=LocalizationService.T("Grid.Evidence");
         EvidenceTitleText.Text=LocalizationService.T("Grid.EvidenceTitle"); EvidenceExpandButton.Content=DetailText.MaxHeight>200?(LocalizationService.Current==AppLanguage.En?"COLLAPSE":"CONTRAER"):(LocalizationService.Current==AppLanguage.En?"EXPAND":"EXPANDIR"); LanguageLabelText.Text=LocalizationService.T("Language.Label");
@@ -220,5 +221,27 @@ public partial class MainWindow : Window
     private void HealthGrid_SelectionChanged(object sender,SelectionChangedEventArgs e){if(HealthGrid.SelectedItem is HealthItem item)DetailText.Text=$"{item.Status} | {item.Area}\n{item.Summary}\n\n{item.Detail}";}
     private void EvidenceExpandButton_Click(object sender,RoutedEventArgs e){var expanded=DetailText.MaxHeight>200;DetailText.MaxHeight=expanded?120:360;EvidenceExpandButton.Content=expanded?(LocalizationService.Current==AppLanguage.En?"EXPAND":"EXPANDIR"):(LocalizationService.Current==AppLanguage.En?"COLLAPSE":"CONTRAER");}
     private void SetBusy(bool busy,string? text=null){TestButton.IsEnabled=!busy;QuickButton.IsEnabled=!busy;IncidentButton.IsEnabled=!busy;BlockingButton.IsEnabled=!busy;TempDbButton.IsEnabled=!busy;LogButton.IsEnabled=!busy;BackupJobsButton.IsEnabled=!busy;AlwaysOnButton.IsEnabled=!busy;PerformanceButton.IsEnabled=!busy;IntegrationsButton.IsEnabled=!busy;HistoryButton.IsEnabled=!busy;OperationsButton.IsEnabled=!busy;AssistantButton.IsEnabled=!busy;if(text!=null)StatusText.Text=text;}
-    private void SetConnectionState(string text,string background,string foreground){ConnectionStateText.Text=text;ConnectionBadge.Background=(Brush)new BrushConverter().ConvertFromString(background)!;ConnectionStateText.Foreground=(Brush)new BrushConverter().ConvertFromString(foreground)!;}
+    private string _connectionVisualState="pending";
+    private void SetConnectionState(string text,string background,string foreground)
+    {
+        ConnectionStateText.Text=text;
+        ConnectionBadge.Background=(Brush)new BrushConverter().ConvertFromString(background)!;
+        ConnectionStateText.Foreground=(Brush)new BrushConverter().ConvertFromString(foreground)!;
+        _connectionVisualState=background.Equals("#173D35",StringComparison.OrdinalIgnoreCase)?"connected":
+            background.Equals("#5A2A2A",StringComparison.OrdinalIgnoreCase)?"error":"pending";
+        UpdateVisibleConnectionState();
+    }
+    private void UpdateVisibleConnectionState()
+    {
+        if(ContextStateDot is null||ContextStateText is null)return;
+        var en=LocalizationService.Current==AppLanguage.En;
+        var color=_connectionVisualState switch{"connected"=>"#36D399","error"=>"#FF6B7A",_=>"#F0B45A"};
+        ContextStateDot.Fill=(Brush)new BrushConverter().ConvertFromString(color)!;
+        ContextStateText.Foreground=(Brush)new BrushConverter().ConvertFromString(color)!;
+        ContextStateText.Text=_connectionVisualState switch{
+            "connected"=>en?"CONNECTED":"CONECTADO",
+            "error"=>en?"CONNECTION FAILED":"ERROR DE CONEXIÓN",
+            _=>en?"NOT CONNECTED":"NO CONECTADO"
+        };
+    }
 }
