@@ -119,6 +119,10 @@
                     </ScrollViewer>
                     <StackPanel Grid.Row="1">
                         <TextBlock x:Name="CurrentContextLabelText" Text="CONTEXTO ACTUAL" Foreground="#718096" FontSize="10" FontWeight="Bold" Margin="6,12,0,5"/>
+                        <StackPanel Orientation="Horizontal" Margin="6,0,0,5">
+                            <Ellipse x:Name="ContextStateDot" Width="9" Height="9" Fill="#F0B45A" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                            <TextBlock x:Name="ContextStateText" Text="NOT CONNECTED" Foreground="#F0B45A" FontSize="11" FontWeight="SemiBold"/>
+                        </StackPanel>
                         <TextBlock x:Name="TargetContextText" Text="localhost" Foreground="#D5DEEB" TextWrapping="Wrap" Margin="6,0"/>
                         <TextBlock x:Name="AuthenticationText" Text="Windows Authentication" Foreground="#718096" FontSize="11" Margin="6,3,0,0"/>
                     </StackPanel>
