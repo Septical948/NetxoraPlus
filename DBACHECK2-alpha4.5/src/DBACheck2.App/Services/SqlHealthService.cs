@@ -159,8 +159,10 @@ SELECT
             ? "POSSIBLE - database reports ACTIVE_TRANSACTION. Correlate before attributing it to this SPID."
             : "NOT DETECTED - current database log reuse wait is " + reuse + ".";
         var lockImpact = waitingLocks > 0 || x.BlockingSessionId > 0 ? "CURRENT CONTENTION DETECTED" : "NO CURRENT WAITING LOCKS DETECTED";
+        var en=LocalizationService.Current==AppLanguage.En;
 
-        return $@"DIAGNOSTICO OPERATIVO - SPID {x.SessionId}
+        return en
+            ? $@"OPERATIONAL DIAGNOSIS - SPID {x.SessionId}
 Classification: {(sleepingOpen ? "WARNING - SLEEPING WITH OPEN TRANSACTION" : "Long-running open transaction")}
 Duration: {x.Minutes} min ({x.Minutes/60}h {x.Minutes%60}m)
 Database: {x.DatabaseName}
@@ -173,19 +175,45 @@ LOG reuse wait: {reuse}
 TempDB Version Store GLOBAL: {version} MB
 Version Store impact attributable to SPID: NOT DETERMINED
 
-IMPACTO ACTUAL
-- Blocking: {(x.BlockingSessionId == 0 ? "No detectado." : "Detectado.")}
+CURRENT IMPACT
+- Blocking: {(x.BlockingSessionId == 0 ? "Not detected." : "Detected.")}
 - Lock contention: {lockImpact}.
 - LOG truncation: {logImpact}
 - Version Store: Global value shown for context only; no causal attribution to this SPID.
 
-ACCION RECOMENDADA
-1. Confirmar aplicaciÃ³n/usuario propietario de la transacciÃ³n.
-2. Revisar SQL/input buffer y objetos bloqueados antes de una acciÃ³n correctiva.
-3. Si la sesiÃ³n es abandonada, capturar Evidence Snapshot.
-4. Evaluar KILL solamente con aprobaciÃ³n explÃ­cita y revalidaciÃ³n de identidad.
+RECOMMENDED ACTION
+1. Confirm the application/user that owns the transaction.
+2. Review SQL/input buffer and locked objects before corrective action.
+3. If the session is abandoned, capture an Evidence Snapshot.
+4. Consider KILL only with explicit approval and identity revalidation.
 
-No corrective action was executed.";
+No corrective action was executed."
+            : $@"DIAGNÓSTICO OPERATIVO - SPID {x.SessionId}
+Clasificación: {(sleepingOpen ? "WARNING - SLEEPING CON TRANSACCIÓN ABIERTA" : "Transacción abierta de larga duración")}
+Duración: {x.Minutes} min ({x.Minutes/60}h {x.Minutes%60}m)
+Database: {x.DatabaseName}
+Login / Host / App: {x.LoginName} / {x.HostName} / {x.ProgramName}
+Bloqueo actual: {(x.BlockingSessionId == 0 ? "NO" : "SÍ - bloqueada por " + x.BlockingSessionId)}
+Locks propios/solicitados: {lockCount}
+Locks en espera: {waitingLocks}
+Tamaño LOG de la base: {totalLog} MB
+Espera de reutilización LOG: {reuse}
+TempDB Version Store GLOBAL: {version} MB
+Impacto de Version Store atribuible al SPID: NO DETERMINADO
+
+IMPACTO ACTUAL
+- Blocking: {(x.BlockingSessionId == 0 ? "No detectado." : "Detectado.")}
+- Contención por locks: {lockImpact}.
+- Truncamiento LOG: {logImpact}
+- Version Store: valor global mostrado sólo como contexto; no se atribuye causalidad a este SPID.
+
+ACCIÓN RECOMENDADA
+1. Confirmar aplicación/usuario propietario de la transacción.
+2. Revisar SQL/input buffer y objetos bloqueados antes de una acción correctiva.
+3. Si la sesión está abandonada, capturar Evidence Snapshot.
+4. Evaluar KILL solamente con aprobación explícita y revalidación de identidad.
+
+No se ejecutó ninguna acción correctiva.";
     }
 
     public async Task<string> GetTransactionLocksAsync(TransactionIncident x)
@@ -229,7 +257,7 @@ Duration: {x.Minutes} min ({x.Minutes/60}h {x.Minutes%60}m)
 Note: for a sleeping session this is the input buffer/last submitted batch visible to SQL Server; it is not proof that this statement opened the transaction.";
 
     public static string GetTransactionDetail(TransactionIncident x) =>
-$@"TRANSACCION - SPID {x.SessionId}
+$@"{(LocalizationService.Current==AppLanguage.En?"TRANSACTION":"TRANSACCIÓN")} - SPID {x.SessionId}
 Begin time: {x.TransactionBeginTime:yyyy-MM-dd HH:mm:ss}
 Duration: {x.Minutes} min ({x.Minutes/60}h {x.Minutes%60}m)
 Database: {x.DatabaseName}
@@ -528,7 +556,7 @@ ORDER BY ast.elapsed_time_seconds DESC;";
         var fileSpread = x.Files.Count < 2 ? 0 : x.Files.Max(f=>f.SizeMb)-x.Files.Min(f=>f.SizeMb);
         var balanced = fileSpread <= 64;
         var versionPct = x.TotalMb <= 0 ? 0 : x.VersionStoreMb*100/x.TotalMb;
-        return $@"TEMPDB / VERSION STORE - DIAGNOSTICO
+        return $@"TEMPDB / VERSION STORE - {(LocalizationService.Current==AppLanguage.En?"DIAGNOSIS":"DIAGNÓSTICO")}
 Status: {x.Status}
 Total: {x.TotalMb} MB | Used: {x.UsedMb} MB ({x.UsedPct}%) | Free: {x.FreeMb} MB
 Version Store GLOBAL: {x.VersionStoreMb} MB ({versionPct:0.0}% of TempDB)
@@ -636,7 +664,7 @@ Recovery model: {x.RecoveryModel}
 Reuse wait: {x.ReuseWait}
 Last LOG backup: {(x.LastLogBackup.HasValue?x.LastLogBackup.Value.ToString("yyyy-MM-dd HH:mm:ss"):"N/A")}
 
-Select DIAGNÃ“STICO for contextual interpretation.";
+{(LocalizationService.Current==AppLanguage.En?"Select DIAGNOSIS for contextual interpretation.":"Seleccioná DIAGNÓSTICO para una interpretación contextual.")}";
 
     public async Task<string> GetLogDiagnosisAsync(LogDatabaseInfo x)
     {
@@ -651,7 +679,7 @@ Select DIAGNÃ“STICO for contextual interpretation.";
             "NOTHING"=>"No current log reuse wait is reported. A large log file alone does not prove an active incident.",
             _=>$"Current log reuse wait: {x.ReuseWait}. Correlate with the corresponding SQL Server subsystem."
         };
-        return $@"TRANSACTION LOG - DIAGNÃ“STICO
+        return $@"TRANSACTION LOG - {(LocalizationService.Current==AppLanguage.En?"DIAGNOSIS":"DIAGNÓSTICO")}
 Database: {x.DatabaseName}
 Status: {x.Status}
 Log: {x.UsedMb} MB used / {x.LogSizeMb} MB total ({x.UsedPct}%)
