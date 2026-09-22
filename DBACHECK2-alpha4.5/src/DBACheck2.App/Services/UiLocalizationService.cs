@@ -34,6 +34,8 @@ public static class UiLocalizationService
         ("CORRELACIONAR","CORRELATE"),
         ("REPORTE TÉCNICO","TECHNICAL REPORT"),
         ("REVALIDAR","REVALIDATE"),
+        ("EXPANDIR","EXPAND"),
+        ("CONTRAER","COLLAPSE"),
         ("Estado","Status"),
         ("Área","Area"),
         ("Resumen","Summary"),
