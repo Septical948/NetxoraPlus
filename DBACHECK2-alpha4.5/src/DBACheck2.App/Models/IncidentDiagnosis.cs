@@ -1,3 +1,5 @@
+using DBACheck2.App.Services;
+
 namespace DBACheck2.App.Models;
 
 public sealed class IncidentDiagnosis
@@ -11,28 +13,31 @@ public sealed class IncidentDiagnosis
     public string Verification { get; init; } = "";
     public string Safety { get; init; } = "READ";
 
-    public override string ToString() =>
-$@"SEVERIDAD
+    public override string ToString()
+    {
+        var en=LocalizationService.Current==AppLanguage.En;
+        return $@"{(en?"SEVERITY":"SEVERIDAD")}
 {Severity}
 
-PROBLEMA
+{(en?"PROBLEM":"PROBLEMA")}
 {Problem}
 
-CAUSA PROBABLE
+{(en?"PROBABLE CAUSE":"CAUSA PROBABLE")}
 {ProbableCause}
 
-EVIDENCIA
+{(en?"EVIDENCE":"EVIDENCIA")}
 {Evidence}
 
-ACCIÓN RECOMENDADA
+{(en?"RECOMMENDED ACTION":"ACCIÓN RECOMENDADA")}
 {RecommendedAction}
 
-ACCIÓN DBA
+{(en?"DBA ACTION":"ACCIÓN DBA")}
 {DbaAction}
 
-VERIFICACIÓN
+{(en?"VERIFICATION":"VERIFICACIÓN")}
 {Verification}
 
-SEGURIDAD
+{(en?"SAFETY":"SEGURIDAD")}
 {Safety}";
+    }
 }
