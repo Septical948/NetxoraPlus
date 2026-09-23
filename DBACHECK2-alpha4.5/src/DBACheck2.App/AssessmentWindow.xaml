@@ -16,9 +16,9 @@
     <Grid.RowDefinitions>
      <RowDefinition Height="Auto"/>
      <RowDefinition Height="Auto"/>
-     <RowDefinition x:Name="ChecksRow" Height="*" MinHeight="140"/>
+     <RowDefinition x:Name="ChecksRow" Height="*" MinHeight="120"/>
      <RowDefinition Height="Auto"/>
-     <RowDefinition x:Name="DetailRow" Height="125"/>
+     <RowDefinition x:Name="DetailRow" Height="0"/>
     </Grid.RowDefinitions>
 
     <Border Background="#111628" BorderBrush="#302B4E" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
@@ -49,7 +49,7 @@
     </UniformGrid>
 
     <DataGrid x:Name="ChecksGrid" Grid.Row="2" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
-      MinHeight="220" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+      MinHeight="120" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
       Background="#111C2F" Foreground="White" RowBackground="#111C2F" AlternatingRowBackground="#16243A"
       BorderBrush="#34455F" BorderThickness="1" FontSize="13"
       VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
