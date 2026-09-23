@@ -12,6 +12,7 @@ public partial class AssessmentWindow:Window
     private readonly AssessmentHistoryService _history=new();
     private List<ServerProfile> _profileItems=new();
     private AssessmentRun? _current;
+    private CancellationTokenSource? _assessmentCts;
     private bool En=>LocalizationService.Current==AppLanguage.En;
 
     public AssessmentWindow()
@@ -32,6 +33,7 @@ public partial class AssessmentWindow:Window
         ProfileLabel.Text=En?"PROFILE":"PERFIL";
         ModeLabel.Text=En?"MODE":"MODO";
         RunButton.Content=En?"RUN ASSESSMENT":"EJECUTAR EVALUACIÓN";
+        StopButton.Content=En?"STOP":"DETENER";
         DetailTitleText.Text=En?"ASSESSMENT EVIDENCE":"EVIDENCIA DE EVALUACIÓN";
         ExpandDetailButton.Content=En?"EXPAND":"EXPANDIR";
         DetailText.Text=En?"Select a check to inspect evidence and remediation guidance.":"Seleccioná un check para revisar evidencia y guía de remediación.";
@@ -51,20 +53,42 @@ public partial class AssessmentWindow:Window
     {
         if(ProfileBox.SelectedItem is not ServerProfile profile){StatusText.Text=En?"Select a saved profile first.":"Seleccioná primero un perfil guardado.";return;}
         var mode=(AssessmentMode)(ModeBox.SelectedItem??AssessmentMode.Full);
+        _assessmentCts?.Dispose();
+        _assessmentCts=new CancellationTokenSource();
+        var progress=new Progress<string>(message=>StatusText.Text=message);
         try
         {
             SetBusy(true);StatusText.Text=En?"Running read-only assessment...":"Ejecutando evaluación de solo lectura...";
-            _current=await _assessment.RunAsync(profile,mode);
+            _current=await _assessment.RunAsync(profile,mode,_assessmentCts.Token,progress);
             await _history.SaveAsync(_current);
             ChecksGrid.ItemsSource=_current.Checks;
             OverallText.Text=_current.Overall;CriticalText.Text=_current.Critical.ToString();WarningText.Text=_current.Warning.ToString();OkText.Text=_current.Ok.ToString();InfoText.Text=_current.Info.ToString();
-            StatusText.Text=En
-                ?$"{_current.Engine} | {_current.Checks.Count} check(s) | {_current.DurationSeconds:0.0}s | {_current.PackVersion}"
-                :$"{_current.Engine} | {_current.Checks.Count} check(s) | {_current.DurationSeconds:0.0}s | {_current.PackVersion}";
+            StatusText.Text=$"{_current.Engine} | {_current.Checks.Count} check(s) | {_current.DurationSeconds:0.0}s | {_current.PackVersion}";
             await LoadHistoryAsync();
         }
+        catch(OperationCanceledException)
+        {
+            StatusText.Text=En
+                ?"Assessment stopped by operator. The interrupted run was not saved to history."
+                :"Evaluación detenida por el operador. La ejecución interrumpida no se guardó en el historial.";
+        }
         catch(Exception ex){StatusText.Text="ERROR: "+ex.Message;}
-        finally{SetBusy(false);}
+        finally
+        {
+            SetBusy(false);
+            _assessmentCts?.Dispose();
+            _assessmentCts=null;
+        }
+    }
+
+    private void StopButton_Click(object sender,RoutedEventArgs e)
+    {
+        if(_assessmentCts is null || _assessmentCts.IsCancellationRequested)return;
+        StopButton.IsEnabled=false;
+        StatusText.Text=En
+            ?"Stopping assessment and cancelling the active query..."
+            :"Deteniendo evaluación y cancelando la consulta activa...";
+        _assessmentCts.Cancel();
     }
 
     private void ChecksGrid_SelectionChanged(object sender,SelectionChangedEventArgs e)
@@ -139,5 +163,11 @@ TOP FINDINGS
             ExpandDetailButton.Content=En?"EXPAND":"EXPANDIR";
         }
     }
-    private void SetBusy(bool busy){RunButton.IsEnabled=!busy;ProfileBox.IsEnabled=!busy;ModeBox.IsEnabled=!busy;}
+    private void SetBusy(bool busy)
+    {
+        RunButton.IsEnabled=!busy;
+        StopButton.IsEnabled=busy && _assessmentCts is not null && !_assessmentCts.IsCancellationRequested;
+        ProfileBox.IsEnabled=!busy;
+        ModeBox.IsEnabled=!busy;
+    }
 }
