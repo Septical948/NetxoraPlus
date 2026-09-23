@@ -1,0 +1,22 @@
+<Window x:Class="DBACheck2.App.SupportWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="DBACHECK 2 - Support" Background="#0A0D18">
+<Grid Margin="18">
+ <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+ <StackPanel Margin="0,0,0,16">
+  <TextBlock x:Name="TitleText" Text="SUPPORT CENTER" Foreground="#38E8D0" FontSize="24" FontWeight="Bold"/>
+  <TextBlock x:Name="SubtitleText" Text="Documentation, diagnostics and support resources" Foreground="#B7C3D7"/>
+ </StackPanel>
+ <UniformGrid Grid.Row="1" Columns="3" Margin="0,0,0,12">
+  <Button x:Name="DocsButton" Content="OPEN DOCUMENTATION" Padding="16,10" Margin="0,0,8,0" Click="DocsButton_Click"/>
+  <Button x:Name="IssuesButton" Content="OPEN SUPPORT / ISSUES" Padding="16,10" Margin="0,0,8,0" Click="IssuesButton_Click"/>
+  <Button x:Name="CopyButton" Content="COPY DIAGNOSTICS" Padding="16,10" Click="CopyButton_Click"/>
+ </UniformGrid>
+ <Border Grid.Row="2" Background="#111628" BorderBrush="#302B4E" BorderThickness="1" CornerRadius="8" Padding="14">
+  <TextBlock x:Name="StatusText" Foreground="#D5DEEB" TextWrapping="Wrap"/>
+ </Border>
+ <TextBox x:Name="DiagnosticText" Grid.Row="3" Margin="0,12,0,0" Background="#111C2F" Foreground="#E8EDF7" BorderThickness="0"
+  IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontFamily="Consolas"/>
+</Grid>
+</Window>
