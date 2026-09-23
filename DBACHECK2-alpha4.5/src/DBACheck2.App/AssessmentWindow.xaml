@@ -5,15 +5,21 @@
 <Grid Margin="12">
  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
 
- <StackPanel Margin="0,0,0,12">
-  <TextBlock x:Name="TitleText" Text="ASSESSMENT" Foreground="#38E8D0" FontSize="24" FontWeight="Bold"/>
-  <TextBlock x:Name="SubtitleText" Text="Multi-engine health assessment · Read-only baseline" Foreground="#B7C3D7"/>
+ <StackPanel Margin="0,0,0,8">
+  <TextBlock x:Name="TitleText" Text="ASSESSMENT" Foreground="#38E8D0" FontSize="22" FontWeight="Bold"/>
+  <TextBlock x:Name="SubtitleText" Text="Multi-engine health assessment · Read-only baseline" Foreground="#B7C3D7" FontSize="12"/>
  </StackPanel>
 
  <TabControl Grid.Row="1" Background="#0A0D18" BorderThickness="0">
   <TabItem x:Name="RunTab" Header="RUN ASSESSMENT">
    <Grid Margin="0,10,0,0">
-    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition x:Name="DetailRow" Height="180"/></Grid.RowDefinitions>
+    <Grid.RowDefinitions>
+     <RowDefinition Height="Auto"/>
+     <RowDefinition Height="Auto"/>
+     <RowDefinition Height="*" MinHeight="220"/>
+     <RowDefinition Height="Auto"/>
+     <RowDefinition x:Name="DetailRow" Height="125"/>
+    </Grid.RowDefinitions>
 
     <Border Background="#111628" BorderBrush="#302B4E" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
      <Grid>
@@ -31,7 +37,7 @@
      </Grid>
     </Border>
 
-    <UniformGrid Grid.Row="1" Columns="5" Margin="0,0,0,10">
+    <UniformGrid Grid.Row="1" Columns="5" Margin="0,0,0,8">
      <Border Background="#121427" BorderBrush="#302B4E" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,8,0"><StackPanel><TextBlock Text="OVERALL" Foreground="#8F9BB3" FontWeight="Bold"/><TextBlock x:Name="OverallText" Text="—" Foreground="#38E8D0" FontSize="18" FontWeight="Bold"/></StackPanel></Border>
      <Border Background="#121427" BorderBrush="#302B4E" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,8,0"><StackPanel><TextBlock Text="CRITICAL" Foreground="#8F9BB3" FontWeight="Bold"/><TextBlock x:Name="CriticalText" Text="0" Foreground="#FF6B7A" FontSize="18" FontWeight="Bold"/></StackPanel></Border>
      <Border Background="#121427" BorderBrush="#302B4E" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,8,0"><StackPanel><TextBlock Text="WARNING" Foreground="#8F9BB3" FontWeight="Bold"/><TextBlock x:Name="WarningText" Text="0" Foreground="#F0B45A" FontSize="18" FontWeight="Bold"/></StackPanel></Border>
@@ -40,17 +46,21 @@
     </UniformGrid>
 
     <DataGrid x:Name="ChecksGrid" Grid.Row="2" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
-      Background="#111C2F" Foreground="White" RowBackground="#111C2F" AlternatingRowBackground="#16243A" SelectionChanged="ChecksGrid_SelectionChanged">
+      MinHeight="220" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+      Background="#111C2F" Foreground="White" RowBackground="#111C2F" AlternatingRowBackground="#16243A"
+      BorderBrush="#34455F" BorderThickness="1" FontSize="13"
+      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+      SelectionChanged="ChecksGrid_SelectionChanged">
      <DataGrid.Columns>
-      <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="95"/>
-      <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="140"/>
-      <DataGridTextColumn Header="Check" Binding="{Binding Title}" Width="160"/>
+      <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
+      <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="155"/>
+      <DataGridTextColumn Header="Check" Binding="{Binding Title}" Width="190"/>
       <DataGridTextColumn Header="Summary" Binding="{Binding Summary}" Width="*"/>
-      <DataGridTextColumn Header="Capability" Binding="{Binding Capability}" Width="120"/>
+      <DataGridTextColumn Header="Capability" Binding="{Binding Capability}" Width="130"/>
      </DataGrid.Columns>
     </DataGrid>
 
-    <Grid Grid.Row="3" Margin="0,10,0,6">
+    <Grid Grid.Row="3" Margin="0,8,0,5">
      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
      <TextBlock x:Name="DetailTitleText" Text="ASSESSMENT EVIDENCE" Foreground="#38E8D0" FontWeight="Bold"/>
      <Button Grid.Column="1" x:Name="ExpandDetailButton" Content="EXPAND" Padding="12,4" Click="ExpandDetailButton_Click"/>
@@ -58,7 +68,8 @@
 
     <TextBox x:Name="DetailText" Grid.Row="4" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
       VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Background="#111C2F" Foreground="#E8EDF7"
-      BorderThickness="0" Padding="12" FontFamily="Consolas" Text="Select a check to inspect evidence and remediation guidance."/>
+      BorderThickness="0" Padding="12" FontFamily="Consolas" FontSize="12.5"
+      Text="Select a check to inspect evidence and remediation guidance."/>
    </Grid>
   </TabItem>
 
