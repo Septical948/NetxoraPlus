@@ -23,7 +23,7 @@
 
     <Border Background="#111628" BorderBrush="#302B4E" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
      <Grid>
-      <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="1*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="1*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <StackPanel Margin="0,0,8,0">
        <TextBlock x:Name="ProfileLabel" Text="PROFILE" Foreground="#8F9BB3" FontWeight="Bold" FontSize="10"/>
        <ComboBox x:Name="ProfileBox" DisplayMemberPath="Display" MinWidth="360"/>
@@ -33,7 +33,10 @@
        <ComboBox x:Name="ModeBox"/>
       </StackPanel>
       <Button Grid.Column="2" x:Name="RunButton" Content="RUN ASSESSMENT" MinWidth="150" Height="34" VerticalAlignment="Bottom" Click="RunButton_Click"/>
-      <TextBlock Grid.Column="3" x:Name="StatusText" Foreground="#D5DEEB" Margin="14,20,0,0" TextWrapping="Wrap"/>
+      <Button Grid.Column="3" x:Name="StopButton" Content="STOP" MinWidth="80" Height="34" Margin="8,0,0,0"
+              VerticalAlignment="Bottom" IsEnabled="False" Background="#4A2028" Foreground="#FFD7DD"
+              BorderBrush="#7A3340" FontWeight="Bold" Click="StopButton_Click"/>
+      <TextBlock Grid.Column="4" x:Name="StatusText" Foreground="#D5DEEB" Margin="14,20,0,0" TextWrapping="Wrap"/>
      </Grid>
     </Border>
 
