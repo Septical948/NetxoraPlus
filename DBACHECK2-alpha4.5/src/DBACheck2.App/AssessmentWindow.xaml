@@ -96,6 +96,29 @@
       <DataGridTextColumn Header="Critical" Binding="{Binding Critical}" Width="70"/>
       <DataGridTextColumn Header="Warning" Binding="{Binding Warning}" Width="70"/>
       <DataGridTextColumn Header="OK" Binding="{Binding Ok}" Width="60"/>
+      <DataGridTemplateColumn Header="" Width="48">
+       <DataGridTemplateColumn.CellTemplate>
+        <DataTemplate>
+         <Button Content="↓" Width="30" Height="24" Padding="0" FontWeight="Bold"
+                 ToolTip="Download Full Assessment" Click="DownloadAssessment_Click">
+          <Button.Style>
+           <Style TargetType="Button">
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Setter Property="Background" Value="#1A2942"/>
+            <Setter Property="Foreground" Value="#38E8D0"/>
+            <Setter Property="BorderBrush" Value="#35506F"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Style.Triggers>
+             <DataTrigger Binding="{Binding Mode}" Value="Full">
+              <Setter Property="Visibility" Value="Visible"/>
+             </DataTrigger>
+            </Style.Triggers>
+           </Style>
+          </Button.Style>
+         </Button>
+        </DataTemplate>
+       </DataGridTemplateColumn.CellTemplate>
+      </DataGridTemplateColumn>
      </DataGrid.Columns>
     </DataGrid>
     <TextBox x:Name="HistoryDetailText" Grid.Row="2" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
