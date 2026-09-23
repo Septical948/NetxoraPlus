@@ -6,11 +6,14 @@ namespace DBACheck2.App.Services;
 
 public sealed class AssessmentService
 {
-    public async Task<AssessmentRun> RunAsync(ServerProfile profile,AssessmentMode mode)
+    public async Task<AssessmentRun> RunAsync(ServerProfile profile,AssessmentMode mode,CancellationToken cancellationToken=default,IProgress<string>? progress=null)
     {
         var started=DateTime.Now;
+        cancellationToken.ThrowIfCancellationRequested();
+        progress?.Report($"Testing {profile.Engine} connection...");
         var provider=DatabaseProviderFactory.Create(profile);
         var info=await provider.TestAsync();
+        cancellationToken.ThrowIfCancellationRequested();
         List<AssessmentCheck> checks;
         string packVersion;
 
@@ -20,19 +23,22 @@ public sealed class AssessmentService
             {
                 case DatabaseEngine.SqlServer:
                     // FULL on SQL Server executes the original DBAHEALTCHECK SQL packs.
-                    checks=await new LegacySqlHealthCheckService(profile).RunFullAsync();
+                    checks=await new LegacySqlHealthCheckService(profile).RunFullAsync(cancellationToken,progress);
                     packVersion="DBAHEALTCHECK SQL Pack 1";
                     break;
                 case DatabaseEngine.PostgreSql:
-                    checks=await new PostgreSqlAssessmentPackService(profile).RunFullAsync();
+                    progress?.Report("Running PostgreSQL Full Pack...");
+                    checks=await new PostgreSqlAssessmentPackService(profile).RunFullAsync(cancellationToken);
                     packVersion="PostgreSQL Full Pack 1";
                     break;
                 case DatabaseEngine.Oracle:
-                    checks=await new OracleAssessmentPackService(profile).RunFullAsync();
+                    progress?.Report("Running Oracle Full Pack...");
+                    checks=await new OracleAssessmentPackService(profile).RunFullAsync(cancellationToken);
                     packVersion="Oracle Full Pack 1";
                     break;
                 case DatabaseEngine.MySqlMariaDb:
-                    checks=await new MySqlAssessmentPackService(profile).RunFullAsync();
+                    progress?.Report("Running MySQL/MariaDB Full Pack...");
+                    checks=await new MySqlAssessmentPackService(profile).RunFullAsync(cancellationToken);
                     packVersion="MySQL/MariaDB Full Pack 1";
                     break;
                 default:
@@ -41,8 +47,11 @@ public sealed class AssessmentService
         }
         else
         {
+            progress?.Report("Running Quick Assessment...");
+            cancellationToken.ThrowIfCancellationRequested();
             var sw=Stopwatch.StartNew();
             var health=await provider.QuickCheckAsync();
+            cancellationToken.ThrowIfCancellationRequested();
             sw.Stop();
             checks=health.Select((x,i)=>FromHealth(profile.Engine,x,i,sw.ElapsedMilliseconds)).ToList()
                 .Where(x=>x.Status!="OK" || x.Category is AssessmentCategory.Platform or AssessmentCategory.HighAvailability)
@@ -50,6 +59,7 @@ public sealed class AssessmentService
             packVersion="Core Quick Baseline 1";
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         return new AssessmentRun {
             StartedAt=started,
             CompletedAt=DateTime.Now,
