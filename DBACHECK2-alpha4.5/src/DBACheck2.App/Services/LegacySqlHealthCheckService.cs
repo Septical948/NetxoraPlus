@@ -88,7 +88,7 @@ public sealed class LegacySqlHealthCheckService
                 cancellationToken.ThrowIfCancellationRequested();
                 if(string.IsNullOrWhiteSpace(batch))continue;
                 await using var cmd=new SqlCommand(batch,cn){CommandTimeout=120};
-                await using var registration=cancellationToken.Register(()=>{try{cmd.Cancel();}catch{}});
+                using var registration=cancellationToken.Register(()=>{try{cmd.Cancel();}catch{}});
                 await using var reader=await cmd.ExecuteReaderAsync(cancellationToken);
 
                 do
