@@ -22,4 +22,16 @@
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.9" />
     <PackageReference Include="System.Data.OleDb" Version="9.0.9" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Original DBAHEALTCHECK SQL libraries embedded verbatim into DBACHECK2. -->
+    <EmbeddedResource Include="..\..\..\Script\*.sql">
+      <LogicalName>LegacyHealthCheck.Script.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\..\Script Index\*.sql">
+      <LogicalName>LegacyHealthCheck.ScriptIndex.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\..\Script-TSQL\*.sql">
+      <LogicalName>LegacyHealthCheck.ScriptTsql.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
 </Project>
