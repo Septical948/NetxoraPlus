@@ -56,6 +56,8 @@ public sealed class UpdateCheckService
         var raw=(value??"").Trim().TrimStart('v','V');
         var dash=raw.IndexOf('-');if(dash>0)raw=raw[..dash];
         var plus=raw.IndexOf('+');if(plus>0)raw=raw[..plus];
-        return Version.TryParse(raw,out version!);
+        if(Version.TryParse(raw,out var parsed) && parsed is not null){version=parsed;return true;}
+        version=new Version(0,0,0,0);
+        return false;
     }
 }
