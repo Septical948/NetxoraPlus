@@ -8,10 +8,12 @@ namespace DBACheck2.App.Services;
 public sealed class OracleAssessmentPackService
 {
     private readonly ServerProfile p;
+    private CancellationToken _cancellationToken;
     public OracleAssessmentPackService(ServerProfile profile)=>p=profile;
 
     public async Task<List<AssessmentCheck>> RunFullAsync(CancellationToken cancellationToken=default)
     {
+        _cancellationToken=cancellationToken;
         cancellationToken.ThrowIfCancellationRequested();
         if(p.OracleMode==OracleConnectionMode.Legacy)return await Task.Run(()=>RunLegacy(cancellationToken),cancellationToken);
         if(p.OracleMode==OracleConnectionMode.Modern)return await RunModernAsync(cancellationToken);
@@ -130,23 +132,27 @@ public sealed class OracleAssessmentPackService
         return x;
     }
 
-    private static async Task<List<AssessmentCheck>> OracleIndexChecksModern(OracleConnection c)
+    private async Task<List<AssessmentCheck>> OracleIndexChecksModern(OracleConnection c)
     {
         try
         {
             var rows=new List<(string Owner,string Table,string Index,string Status,int Pos,string Col)>();
+            _cancellationToken.ThrowIfCancellationRequested();
             await using var q=c.CreateCommand();q.CommandText=@"select i.owner,i.table_name,i.index_name,i.status,c.column_position,c.column_name from dba_indexes i join dba_ind_columns c on c.index_owner=i.owner and c.index_name=i.index_name and c.table_owner=i.table_owner and c.table_name=i.table_name where i.owner not in ('SYS','SYSTEM') order by i.owner,i.table_name,i.index_name,c.column_position";
-            await using var r=await q.ExecuteReaderAsync();while(await r.ReadAsync())rows.Add((S(r,0),S(r,1),S(r,2),S(r,3),Convert.ToInt32(r.GetValue(4)),S(r,5)));
+            using var registration=_cancellationToken.Register(()=>{try{q.Cancel();}catch{}});
+            await using var r=await q.ExecuteReaderAsync(_cancellationToken);while(await r.ReadAsync(_cancellationToken))rows.Add((S(r,0),S(r,1),S(r,2),S(r,3),Convert.ToInt32(r.GetValue(4)),S(r,5)));
             return IndexChecks(rows);
-        }catch(Exception ex){return new(){OracleError("ORA.INDEX.INVENTORY",AssessmentCategory.Indexes,"Index Inventory",ex)};}
+        }catch(OperationCanceledException){throw;}catch(Exception ex){return new(){OracleError("ORA.INDEX.INVENTORY",AssessmentCategory.Indexes,"Index Inventory",ex)};}
     }
-    private static List<AssessmentCheck> OracleIndexChecksLegacy(OleDbConnection c)
+    private List<AssessmentCheck> OracleIndexChecksLegacy(OleDbConnection c)
     {
         try
         {
             var rows=new List<(string Owner,string Table,string Index,string Status,int Pos,string Col)>();
+            _cancellationToken.ThrowIfCancellationRequested();
             using var q=new OleDbCommand("select i.owner,i.table_name,i.index_name,i.status,c.column_position,c.column_name from dba_indexes i,dba_ind_columns c where c.index_owner=i.owner and c.index_name=i.index_name and c.table_owner=i.table_owner and c.table_name=i.table_name and i.owner not in ('SYS','SYSTEM') order by i.owner,i.table_name,i.index_name,c.column_position",c);
-            using var r=q.ExecuteReader();if(r is not null)while(r.Read())rows.Add((S(r,0),S(r,1),S(r,2),S(r,3),Convert.ToInt32(r.GetValue(4)),S(r,5)));
+            using var registration=_cancellationToken.Register(()=>{try{q.Cancel();}catch{}});
+            using var r=q.ExecuteReader();if(r is not null)while(r.Read()){_cancellationToken.ThrowIfCancellationRequested();rows.Add((S(r,0),S(r,1),S(r,2),S(r,3),Convert.ToInt32(r.GetValue(4)),S(r,5)));}
             return IndexChecks(rows);
         }catch(Exception ex){return new(){OracleError("ORA.INDEX.INVENTORY",AssessmentCategory.Indexes,"Index Inventory",ex)};}
     }
@@ -161,29 +167,31 @@ public sealed class OracleAssessmentPackService
         };
     }
 
-    private static async Task<AssessmentCheck> StatsModern(OracleConnection c,int major)=>major>=10
+    private async Task<AssessmentCheck> StatsModern(OracleConnection c,int major)=>major>=10
         ? await Q(c,"ORA.MAINT.STATS",AssessmentCategory.Maintenance,"Stale Statistics","select case when count(*)>0 then 'WARNING' else 'OK' end,count(*)||' table(s) with stale statistics',nvl(max(owner||'.'||table_name),'') from dba_tab_statistics where stale_stats='YES' and owner not in ('SYS','SYSTEM')")
         : await Q(c,"ORA.MAINT.STATS",AssessmentCategory.Maintenance,"Statistics Recency","select case when count(*)>0 then 'WARNING' else 'OK' end,count(*)||' table(s) not analyzed in 30d or never',nvl(max(owner||'.'||table_name),'') from dba_tables where owner not in ('SYS','SYSTEM') and (last_analyzed is null or last_analyzed<sysdate-30)");
-    private static AssessmentCheck StatsLegacy(OleDbConnection c,int major)=>major>=10
+    private AssessmentCheck StatsLegacy(OleDbConnection c,int major)=>major>=10
         ? Q(c,"ORA.MAINT.STATS",AssessmentCategory.Maintenance,"Stale Statistics","select decode(count(*),0,'OK','WARNING'),to_char(count(*))||' table(s) with stale statistics',nvl(max(owner||'.'||table_name),'') from dba_tab_statistics where stale_stats='YES' and owner not in ('SYS','SYSTEM')")
         : Q(c,"ORA.MAINT.STATS",AssessmentCategory.Maintenance,"Statistics Recency","select decode(count(*),0,'OK','WARNING'),to_char(count(*))||' table(s) not analyzed in 30d or never',nvl(max(owner||'.'||table_name),'') from dba_tables where owner not in ('SYS','SYSTEM') and (last_analyzed is null or last_analyzed<sysdate-30)");
-    private static Task<AssessmentCheck> JobsModern(OracleConnection c,int major)=>major>=10
+    private Task<AssessmentCheck> JobsModern(OracleConnection c,int major)=>major>=10
         ? Q(c,"ORA.MAINT.JOBS",AssessmentCategory.Maintenance,"Scheduler Jobs","select case when count(*)>0 then 'WARNING' else 'OK' end,count(*)||' enabled scheduler job(s) in failed/broken state',nvl(max(owner||'.'||job_name||' '||state),'') from dba_scheduler_jobs where enabled='TRUE' and state in ('BROKEN','FAILED')")
         : Q(c,"ORA.MAINT.JOBS",AssessmentCategory.Maintenance,"DBMS_JOB Jobs","select case when count(*)>0 then 'WARNING' else 'OK' end,count(*)||' broken DBMS_JOB job(s)',nvl(to_char(max(job)),'') from dba_jobs where broken='Y'");
-    private static AssessmentCheck JobsLegacy(OleDbConnection c,int major)=>major>=10
+    private AssessmentCheck JobsLegacy(OleDbConnection c,int major)=>major>=10
         ? Q(c,"ORA.MAINT.JOBS",AssessmentCategory.Maintenance,"Scheduler Jobs","select decode(count(*),0,'OK','WARNING'),to_char(count(*))||' enabled scheduler job(s) in failed/broken state',nvl(max(owner||'.'||job_name||' '||state),'') from dba_scheduler_jobs where enabled='TRUE' and state in ('BROKEN','FAILED')")
         : Q(c,"ORA.MAINT.JOBS",AssessmentCategory.Maintenance,"DBMS_JOB Jobs","select decode(count(*),0,'OK','WARNING'),to_char(count(*))||' broken DBMS_JOB job(s)',nvl(to_char(max(job)),'') from dba_jobs where broken='Y'");
 
-    private static async Task<string> Scalar(OracleConnection c,string sql){await using var q=c.CreateCommand();q.CommandText=sql;return Convert.ToString(await q.ExecuteScalarAsync())??"";}
-    private static string Scalar(OleDbConnection c,string sql){using var q=new OleDbCommand(sql,c);return Convert.ToString(q.ExecuteScalar())??"";}
-    private static async Task<AssessmentCheck> Q(OracleConnection c,string id,AssessmentCategory cat,string title,string sql)
+    private async Task<string> Scalar(OracleConnection c,string sql){_cancellationToken.ThrowIfCancellationRequested();await using var q=c.CreateCommand();q.CommandText=sql;using var registration=_cancellationToken.Register(()=>{try{q.Cancel();}catch{}});return Convert.ToString(await q.ExecuteScalarAsync(_cancellationToken))??"";}
+    private string Scalar(OleDbConnection c,string sql){_cancellationToken.ThrowIfCancellationRequested();using var q=new OleDbCommand(sql,c);using var registration=_cancellationToken.Register(()=>{try{q.Cancel();}catch{}});return Convert.ToString(q.ExecuteScalar())??"";}
+    private async Task<AssessmentCheck> Q(OracleConnection c,string id,AssessmentCategory cat,string title,string sql)
     {
-        var st=DateTime.Now;try{await using var q=c.CreateCommand();q.CommandText=sql;q.CommandTimeout=30;await using var r=await q.ExecuteReaderAsync();await r.ReadAsync();var status=S(r,0);return Make(id,cat,title,status,S(r,1),S(r,2),(long)(DateTime.Now-st).TotalMilliseconds);}
+        var st=DateTime.Now;try{_cancellationToken.ThrowIfCancellationRequested();await using var q=c.CreateCommand();q.CommandText=sql;q.CommandTimeout=30;using var registration=_cancellationToken.Register(()=>{try{q.Cancel();}catch{}});await using var r=await q.ExecuteReaderAsync(_cancellationToken);await r.ReadAsync(_cancellationToken);var status=S(r,0);return Make(id,cat,title,status,S(r,1),S(r,2),(long)(DateTime.Now-st).TotalMilliseconds);}
+        catch(OperationCanceledException){throw;}
         catch(Exception ex){return OracleError(id,cat,title,ex);}
     }
-    private static AssessmentCheck Q(OleDbConnection c,string id,AssessmentCategory cat,string title,string sql)
+    private AssessmentCheck Q(OleDbConnection c,string id,AssessmentCategory cat,string title,string sql)
     {
-        var st=DateTime.Now;try{using var q=new OleDbCommand(sql,c){CommandTimeout=30};using var r=q.ExecuteReader();if(r is null||!r.Read())return Make(id,cat,title,"INFO","No data","",(long)(DateTime.Now-st).TotalMilliseconds);return Make(id,cat,title,S(r,0),S(r,1),S(r,2),(long)(DateTime.Now-st).TotalMilliseconds);}
+        var st=DateTime.Now;try{_cancellationToken.ThrowIfCancellationRequested();using var q=new OleDbCommand(sql,c){CommandTimeout=30};using var registration=_cancellationToken.Register(()=>{try{q.Cancel();}catch{}});using var r=q.ExecuteReader();_cancellationToken.ThrowIfCancellationRequested();if(r is null||!r.Read())return Make(id,cat,title,"INFO","No data","",(long)(DateTime.Now-st).TotalMilliseconds);_cancellationToken.ThrowIfCancellationRequested();return Make(id,cat,title,S(r,0),S(r,1),S(r,2),(long)(DateTime.Now-st).TotalMilliseconds);}
+        catch(OperationCanceledException){throw;}
         catch(Exception ex){return OracleError(id,cat,title,ex);}
     }
     private static AssessmentCheck Make(string id,AssessmentCategory c,string title,string status,string summary,string evidence,long ms)=>new(){CheckId=id,Engine=DatabaseEngine.Oracle,Category=c,Title=title,Status=status,Severity=Severity(status),Summary=summary,Evidence=evidence,WhyItMatters=Why(c),RecommendedAction=Action(c,status),Verification="Re-run this check after remediation and compare evidence.",Capability="AVAILABLE",ReadOnly=true,DurationMs=ms,Timestamp=DateTime.Now};
