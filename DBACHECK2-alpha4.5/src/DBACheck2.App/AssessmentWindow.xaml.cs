@@ -150,25 +150,8 @@ TOP FINDINGS
 {string.Join(Environment.NewLine,findings.Select(x=>$"[{x.Status}] {x.Category} / {x.Title}: {x.Summary}"))}";
     }
 
-    private bool _detailExpanded;
     private void ExpandDetailButton_Click(object sender,RoutedEventArgs e)
-    {
-        _detailExpanded=!_detailExpanded;
-        if(_detailExpanded)
-        {
-            ChecksGrid.MinHeight=120;
-            ChecksRow.Height=new GridLength(180);
-            DetailRow.Height=new GridLength(1,GridUnitType.Star);
-            ExpandDetailButton.Content=En?"COLLAPSE":"CONTRAER";
-        }
-        else
-        {
-            ChecksGrid.MinHeight=120;
-            ChecksRow.Height=new GridLength(1,GridUnitType.Star);
-            DetailRow.Height=new GridLength(0);
-            ExpandDetailButton.Content=En?"EXPAND":"EXPANDIR";
-        }
-    }
+        =>DetailPanelService.Toggle(ChecksRow,DetailRow,ExpandDetailButton,125,105);
 
     private void ResetRunView()
     {
@@ -180,12 +163,9 @@ TOP FINDINGS
         DetailText.Text=En
             ?"Assessment is running. Select a finding after completion to inspect its evidence."
             :"La evaluación está en ejecución. Seleccioná un hallazgo al finalizar para revisar su evidencia.";
-        _detailExpanded=false;
-        ChecksGrid.MinHeight=120;
-        ChecksRow.Height=new GridLength(1,GridUnitType.Star);
-        DetailRow.Height=new GridLength(0);
-        ExpandDetailButton.Content=En?"EXPAND":"EXPANDIR";
+        DetailPanelService.Initialize(ChecksRow,DetailRow,ExpandDetailButton,125);
     }
+
     private void SetBusy(bool busy)
     {
         RunButton.IsEnabled=!busy;
