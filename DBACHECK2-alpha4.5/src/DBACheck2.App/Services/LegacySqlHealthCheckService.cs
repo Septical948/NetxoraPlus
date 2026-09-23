@@ -16,18 +16,24 @@ public sealed class LegacySqlHealthCheckService
     public async Task<List<AssessmentCheck>> RunFullAsync()
     {
         var scripts=LoadEmbeddedScripts();
-        var unique=new Dictionary<string,LegacyScript>(StringComparer.OrdinalIgnoreCase);
+        var unique=new List<LegacyScript>();
+        var seenNames=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seenHashes=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         // Preserve original precedence: Script -> Script Index -> Script-TSQL.
+        // Duplicate filenames and byte-equivalent SQL are executed only once.
         foreach(var script in scripts.OrderBy(x=>x.Order).ThenBy(x=>x.FileName,StringComparer.OrdinalIgnoreCase))
-            if(!unique.ContainsKey(script.FileName))
-                unique[script.FileName]=script;
+        {
+            var hash=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(script.Sql.Replace("\r\n","\n").Trim())));
+            if(!seenNames.Add(script.FileName) || !seenHashes.Add(hash))continue;
+            unique.Add(script);
+        }
 
         var result=new List<AssessmentCheck>();
         await using var cn=new SqlConnection(BuildConnectionString());
         await cn.OpenAsync();
 
-        foreach(var script in unique.Values.OrderBy(x=>x.Order).ThenBy(x=>x.FileName,StringComparer.OrdinalIgnoreCase))
+        foreach(var script in unique.OrderBy(x=>x.Order).ThenBy(x=>x.FileName,StringComparer.OrdinalIgnoreCase))
             result.Add(await ExecuteAsync(cn,script));
 
         return result;
