@@ -249,7 +249,7 @@ public partial class MainWindow : Window
         CurrentContextLabelText.Text=LocalizationService.T("Context.Current"); AuthenticationText.Text=LocalizationService.T("Context.WindowsAuth"); UpdateVisibleConnectionState();
         QuickTitleText.Text=LocalizationService.T("Quick.Title"); QuickSubtitleText.Text=LocalizationService.T("Quick.Subtitle"); StatusText.Text=LocalizationService.T("Quick.Ready"); DetailText.Text=LocalizationService.T("Quick.SelectEvidence"); InsightHealthLabel.Text=LocalizationService.T("Insight.Health"); InsightAlertLabel.Text=LocalizationService.T("Insight.Alerts"); InsightTopLabel.Text=LocalizationService.T("Insight.Top"); InsightEngineLabel.Text=LocalizationService.T("Insight.Engine");
         StatusColumn.Header=LocalizationService.T("Grid.Status"); AreaColumn.Header=LocalizationService.T("Grid.Area"); SummaryColumn.Header=LocalizationService.T("Grid.Summary"); EvidenceColumn.Header=LocalizationService.T("Grid.Evidence");
-        EvidenceTitleText.Text=LocalizationService.T("Grid.EvidenceTitle"); EvidenceExpandButton.Content=DetailText.MaxHeight>200?(LocalizationService.Current==AppLanguage.En?"COLLAPSE":"CONTRAER"):(LocalizationService.Current==AppLanguage.En?"EXPAND":"EXPANDIR"); LanguageLabelText.Text=LocalizationService.T("Language.Label");
+        EvidenceTitleText.Text=LocalizationService.T("Grid.EvidenceTitle"); EvidenceExpandButton.Content=QuickDetailRow.Height.IsStar?(LocalizationService.Current==AppLanguage.En?"COLLAPSE":"CONTRAER"):(LocalizationService.Current==AppLanguage.En?"EXPAND":"EXPANDIR"); LanguageLabelText.Text=LocalizationService.T("Language.Label");
         FooterText.Text=$"DBACHECK 2 Beta 2 | Multi-engine | {LocalizationService.T("Common.ReadOnly")}";
         SettingsButton.ToolTip=LocalizationService.Current==AppLanguage.En?"Settings":"Configuración";
         SupportButton.ToolTip=LocalizationService.Current==AppLanguage.En?"Support":"Soporte";
@@ -355,7 +355,7 @@ public partial class MainWindow : Window
     }
 
     private void HealthGrid_SelectionChanged(object sender,SelectionChangedEventArgs e){if(HealthGrid.SelectedItem is HealthItem item)DetailText.Text=$"{item.Status} | {item.Area}\n{item.Summary}\n\n{item.Detail}";}
-    private void EvidenceExpandButton_Click(object sender,RoutedEventArgs e){var expanded=DetailText.MaxHeight>200;DetailText.MaxHeight=expanded?120:360;EvidenceExpandButton.Content=expanded?(LocalizationService.Current==AppLanguage.En?"EXPAND":"EXPANDIR"):(LocalizationService.Current==AppLanguage.En?"COLLAPSE":"CONTRAER");}
+    private void EvidenceExpandButton_Click(object sender,RoutedEventArgs e)=>DetailPanelService.Toggle(QuickListRow,QuickDetailRow,EvidenceExpandButton,125,105);
     private void SetBusy(bool busy,string? text=null){TestButton.IsEnabled=!busy;QuickButton.IsEnabled=!busy;IncidentButton.IsEnabled=!busy;BlockingButton.IsEnabled=!busy;TempDbButton.IsEnabled=!busy;LogButton.IsEnabled=!busy;BackupJobsButton.IsEnabled=!busy;AlwaysOnButton.IsEnabled=!busy;PerformanceButton.IsEnabled=!busy;AssessmentButton.IsEnabled=!busy;IntegrationsButton.IsEnabled=!busy;AlertInboxButton.IsEnabled=!busy;HistoryButton.IsEnabled=!busy;OperationsButton.IsEnabled=!busy;AssistantButton.IsEnabled=!busy;SettingsButton.IsEnabled=!busy;SupportButton.IsEnabled=!busy;if(text!=null)StatusText.Text=text;}
     private string _connectionVisualState="pending";
     private void SetConnectionState(string text,string background,string foreground)
