@@ -31,8 +31,17 @@ public sealed class LegacySqlHealthCheckService
         }
 
         var result=new List<AssessmentCheck>();
-        await using var cn=new SqlConnection(BuildConnectionString());
-        await cn.OpenAsync(cancellationToken);
+        var connectionString=BuildConnectionString();
+
+        // DBAHEALTCHECK originally launched every .sql through a separate sqlcmd process.
+        // Keep the same session isolation here. SqlClient pooling keeps the open cost low,
+        // while a broken/terminated session from one legacy query cannot poison later checks.
+        string serverVersion;
+        await using(var probe=new SqlConnection(connectionString))
+        {
+            await probe.OpenAsync(cancellationToken);
+            serverVersion=probe.ServerVersion;
+        }
 
         var ordered=unique.OrderBy(x=>x.Order).ThenBy(x=>x.FileName,StringComparer.OrdinalIgnoreCase).ToList();
         for(var i=0;i<ordered.Count;i++)
@@ -40,7 +49,10 @@ public sealed class LegacySqlHealthCheckService
             cancellationToken.ThrowIfCancellationRequested();
             var script=ordered[i];
             progress?.Report($"DBAHEALTCHECK {i+1}/{ordered.Count} · {script.FileName}");
-            result.Add(await ExecuteAsync(cn,script,cancellationToken));
+
+            await using var cn=new SqlConnection(connectionString);
+            await cn.OpenAsync(cancellationToken);
+            result.Add(await ExecuteAsync(cn,script,serverVersion,cancellationToken));
         }
 
         return result;
@@ -74,7 +86,7 @@ public sealed class LegacySqlHealthCheckService
         return b.ConnectionString;
     }
 
-    private async Task<AssessmentCheck> ExecuteAsync(SqlConnection cn,LegacyScript script,CancellationToken cancellationToken)
+    private async Task<AssessmentCheck> ExecuteAsync(SqlConnection cn,LegacyScript script,string serverVersion,CancellationToken cancellationToken)
     {
         var started=DateTime.Now;
         try
@@ -156,7 +168,7 @@ public sealed class LegacySqlHealthCheckService
                     : status=="NO PERMISSION"
                         ? "Insufficient privileges for this original DBAHEALTCHECK query."
                         : $"Legacy HealthCheck query failed: {ex.Message}",
-                Evidence=$"SOURCE: {script.SourceFolder} / {script.FileName}\nSERVER VERSION: {cn.ServerVersion}\n{ex.Message}",
+                Evidence=$"SOURCE: {script.SourceFolder} / {script.FileName}\nSERVER VERSION: {serverVersion}\n{ex.Message}",
                 WhyItMatters="The original DBAHEALTCHECK check is preserved, but DBACHECK reports capability limits instead of failing the complete assessment.",
                 RecommendedAction=status=="UNSUPPORTED"
                     ? "No production change is required. Use the checks supported by this SQL Server release and document the unavailable capability."
