@@ -8,7 +8,7 @@
  <Style TargetType="DataGridCell"><Setter Property="Padding" Value="5,3"/></Style>
 </Window.Resources>
 <Grid Margin="16">
- <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition x:Name="DetailRow" Height="170"/></Grid.RowDefinitions>
+ <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition x:Name="ListRow" Height="*"/><RowDefinition Height="Auto"/><RowDefinition x:Name="DetailRow" Height="125"/></Grid.RowDefinitions>
  <StackPanel><TextBlock x:Name="TitleText" Text="INCIDENT ANALYZER · ALWAYSON / HA" Foreground="#38E8D0" FontSize="26" FontWeight="Bold"/><TextBlock x:Name="SubtitleText" Text="Beta 1 · Availability Groups · Replicas · Databases · Queues · Listener · Evidence · Read-only" Foreground="#B7C3D7"/></StackPanel>
  <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,14,0,10">
   <Button x:Name="RefreshButton" Padding="18,8" Content="ACTUALIZAR" Click="RefreshButton_Click"/>
