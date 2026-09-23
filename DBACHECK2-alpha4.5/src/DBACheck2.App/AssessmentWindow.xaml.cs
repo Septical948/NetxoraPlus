@@ -120,6 +120,6 @@ TOP FINDINGS
 {string.Join(Environment.NewLine,findings.Select(x=>$"[{x.Status}] {x.Category} / {x.Title}: {x.Summary}"))}";
     }
 
-    private void ExpandDetailButton_Click(object sender,RoutedEventArgs e)=>DetailPanelService.Toggle(DetailRow,ExpandDetailButton,180);
+    private void ExpandDetailButton_Click(object sender,RoutedEventArgs e)=>DetailPanelService.Toggle(DetailRow,ExpandDetailButton,125);
     private void SetBusy(bool busy){RunButton.IsEnabled=!busy;ProfileBox.IsEnabled=!busy;ModeBox.IsEnabled=!busy;}
 }
