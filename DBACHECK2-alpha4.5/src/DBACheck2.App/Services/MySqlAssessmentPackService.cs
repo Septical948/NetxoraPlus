@@ -11,30 +11,47 @@ public sealed class MySqlAssessmentPackService
     private readonly ServerProfile p;
     public MySqlAssessmentPackService(ServerProfile profile)=>p=profile;
 
-    public Task<List<AssessmentCheck>> RunFullAsync()=>WithConnection(async c=>
+    public Task<List<AssessmentCheck>> RunFullAsync(CancellationToken cancellationToken=default)=>WithConnection(async c=>
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var x=new List<AssessmentCheck>();
         var version=await Scalar(c,"select version()");
         var maria=version.Contains("MariaDB",StringComparison.OrdinalIgnoreCase);
         var major=Major(version);
 
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(Info("MYSQL.PLATFORM.VERSION",AssessmentCategory.Platform,$"{(maria?"MariaDB":"MySQL")} Version",version,$"Database={c.Database} | User={p.Username} | SSH={p.UseSshTunnel}"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"MYSQL.CONFIG.CONNECTIONS",AssessmentCategory.Configuration,"Connection Capacity",@"select if(@@max_connections>0 and (select count(*) from information_schema.processlist)*100/@@max_connections>=80,'WARNING','OK'),concat((select count(*) from information_schema.processlist),' / ',@@max_connections,' connections'),concat('running=',(select count(*) from information_schema.processlist where command<>'Sleep'),'; sleeping=',(select count(*) from information_schema.processlist where command='Sleep'))"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"MYSQL.TRAN.LONG",AssessmentCategory.Transactions,"Long InnoDB Transactions",@"select if(count(*)>0,'WARNING','OK'),concat(count(*),' transaction(s) > 30 min'),coalesce(group_concat(concat('trx=',trx_id,' age=',timestampdiff(minute,trx_started,now()),'m') separator '; '),'') from information_schema.innodb_trx where trx_started < now()-interval 30 minute"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"MYSQL.PERF.LONGSQL",AssessmentCategory.Performance,"Long Running SQL",@"select if(count(*)>0,'WARNING','OK'),concat(count(*),' query(s) > 60 sec'),coalesce(group_concat(concat('id=',id,' ',time,'s db=',coalesce(db,'')) separator '; '),'') from information_schema.processlist where command<>'Sleep' and time>60"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Blocking(c,maria,major));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"MYSQL.CAPACITY.DATABASES",AssessmentCategory.Capacity,"Database Size",@"select 'OK',concat(count(distinct table_schema),' database(s)'),coalesce(group_concat(concat(table_schema,'=',round(sum_mb,1),'MB') separator '; '),'') from (select table_schema,sum(data_length+index_length)/1024/1024 sum_mb from information_schema.tables where table_schema not in ('mysql','information_schema','performance_schema','sys') group by table_schema) s"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.AddRange(await IndexChecks(c));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"MYSQL.CAPACITY.FRAGMENTATION",AssessmentCategory.Capacity,"Table Free Space Candidates",@"select if(count(*)>0,'WARNING','OK'),concat(count(*),' table(s) with >1GB DATA_FREE'),coalesce(group_concat(concat(table_schema,'.',table_name,' free=',round(data_free/1024/1024),'MB') separator '; '),'') from information_schema.tables where table_schema not in ('mysql','information_schema','performance_schema','sys') and data_free>1073741824"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.AddRange(await TempChecks(c));
+        cancellationToken.ThrowIfCancellationRequested();
         x.AddRange(await InnoDbChecks(c));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"MYSQL.LOG.BINLOG",AssessmentCategory.Logs,"Binary Log Configuration",@"select if(@@log_bin=1,'OK','INFO'),concat('Binary log=',@@log_bin),concat('format=',@@binlog_format,'; sync_binlog=',@@sync_binlog)"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Replication(c,maria,major));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"MYSQL.CONFIG.CORE",AssessmentCategory.Configuration,"Core InnoDB Settings",@"select 'INFO','Core MySQL/MariaDB settings',concat('buffer_pool=',@@innodb_buffer_pool_size,'; max_connections=',@@max_connections,'; tmp_table_size=',@@tmp_table_size,'; max_heap_table_size=',@@max_heap_table_size)"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"MYSQL.MAINT.EVENTS",AssessmentCategory.Maintenance,"Event Scheduler",@"select 'INFO',concat('event_scheduler=',@@event_scheduler),concat((select count(*) from information_schema.events),' event definition(s)')"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(Unavailable("MYSQL.BACKUP.EVIDENCE",AssessmentCategory.Backup,"Backup Evidence","MySQL/MariaDB does not expose a universal authoritative last-backup record. Integrate the actual backup tool/filesystem evidence instead of inferring recoverability."));
+        cancellationToken.ThrowIfCancellationRequested();
         return x;
-    });
+    },cancellationToken);
 
     private async Task<AssessmentCheck> Blocking(MySqlConnection c,bool maria,int major)
     {
@@ -134,9 +151,24 @@ public sealed class MySqlAssessmentPackService
         var client=new SshClient(p.SshHost,p.SshPort??22,p.SshUsername,LoadKey());client.Connect();
         var port=new ForwardedPortLocal("127.0.0.1",0,p.Host,(uint)(p.Port??3306));client.AddForwardedPort(port);port.Start();return(client,port);
     }
-    private async Task<T> WithConnection<T>(Func<MySqlConnection,Task<T>> work)
+    private async Task<T> WithConnection<T>(Func<MySqlConnection,Task<T>> work,CancellationToken cancellationToken=default)
     {
-        var t=Tunnel();try{var host=t is null?p.Host:"127.0.0.1";var port=t is null?(uint)(p.Port??3306):t.Value.Port.BoundPort;await using var c=new MySqlConnection(Cs(host,port));await c.OpenAsync();return await work(c);}finally{if(t is not null){t.Value.Port.Stop();t.Value.Client.Disconnect();t.Value.Port.Dispose();t.Value.Client.Dispose();}}
+        cancellationToken.ThrowIfCancellationRequested();
+        var t=Tunnel();
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var host=t is null?p.Host:"127.0.0.1";
+            var port=t is null?(uint)(p.Port??3306):t.Value.Port.BoundPort;
+            await using var c=new MySqlConnection(Cs(host,port));
+            await c.OpenAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            return await work(c);
+        }
+        finally
+        {
+            if(t is not null){t.Value.Port.Stop();t.Value.Client.Disconnect();t.Value.Port.Dispose();t.Value.Client.Dispose();}
+        }
     }
 
     private static async Task<string> Scalar(MySqlConnection c,string sql){await using var q=new MySqlCommand(sql,c);return Convert.ToString(await q.ExecuteScalarAsync())??"";}
