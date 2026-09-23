@@ -154,7 +154,7 @@ public sealed class OracleAssessmentPackService
             using var registration=_cancellationToken.Register(()=>{try{q.Cancel();}catch{}});
             using var r=q.ExecuteReader();if(r is not null)while(r.Read()){_cancellationToken.ThrowIfCancellationRequested();rows.Add((S(r,0),S(r,1),S(r,2),S(r,3),Convert.ToInt32(r.GetValue(4)),S(r,5)));}
             return IndexChecks(rows);
-        }catch(Exception ex){return new(){OracleError("ORA.INDEX.INVENTORY",AssessmentCategory.Indexes,"Index Inventory",ex)};}
+        }catch(OperationCanceledException){throw;}catch(Exception ex){return new(){OracleError("ORA.INDEX.INVENTORY",AssessmentCategory.Indexes,"Index Inventory",ex)};}
     }
     private static List<AssessmentCheck> IndexChecks(List<(string Owner,string Table,string Index,string Status,int Pos,string Col)> rows)
     {
