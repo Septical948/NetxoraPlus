@@ -16,7 +16,7 @@ public static class LocalizationService
         ["App.Subtitle"]=("Beta 1 · Plataforma DBA Multi-Engine","Beta 1 · Multi-Engine DBA Platform"),
         ["Connection.Engine"]=("MOTOR","ENGINE"), ["Connection.Target"]=("DESTINO / PERFIL","TARGET / PROFILE"), ["Connection.Test"]=("PROBAR CONEXIÓN","TEST CONNECTION"),
         ["Connection.Unverified"]=("NO VERIFICADA","NOT VERIFIED"), ["Connection.Trust"]=("Confiar certificado","Trust certificate"),
-        ["Nav.Operation"]=("INICIO","START"), ["Nav.Diagnostics"]=("DIAGNÓSTICO","DIAGNOSTICS"), ["Nav.Integrations"]=("INTEGRACIONES","INTEGRATIONS"), ["Nav.MonitoringIntegrations"]=("Integraciones de monitoreo","Monitoring Integrations"), ["Nav.Incidents"]=("INCIDENTES","INCIDENTS"), ["Nav.Quick"]=("Chequeo rápido","Quick Check"),
+        ["Nav.Operation"]=("INICIO","START"), ["Nav.Diagnostics"]=("DIAGNÓSTICO","DIAGNOSTICS"), ["Nav.Assessment"]=("EVALUACIÓN","ASSESSMENT"), ["Nav.HealthAssessment"]=("Evaluación de salud","Health Assessment"), ["Nav.Integrations"]=("INTEGRACIONES","INTEGRATIONS"), ["Nav.MonitoringIntegrations"]=("Integraciones de monitoreo","Monitoring Integrations"), ["Nav.Incidents"]=("INCIDENTES","INCIDENTS"), ["Nav.Quick"]=("Chequeo rápido","Quick Check"),
         ["Nav.LongTransactions"]=("Transacciones largas","Long Transactions"), ["Nav.Blocking"]=("Bloqueos","Blocking"),
         ["Nav.LongTransactionsSql"]=("Transacciones activas","Active Transactions"), ["Nav.BlockingSql"]=("Bloqueos y esperas","Blocking & Waits"),
         ["Nav.LongTransactionsPg"]=("Transacciones largas","Long Transactions"), ["Nav.BlockingPg"]=("Locks y bloqueos","Locks & Blocking"),
