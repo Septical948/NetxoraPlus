@@ -206,7 +206,7 @@ SIGUIENTE PASO
         InboxGrid.SelectedItem=item;
     }
 
-    private void ExpandDetailButton_Click(object sender,RoutedEventArgs e)=>DetailPanelService.Toggle(DetailRow,ExpandDetailButton,190);
+    private void ExpandDetailButton_Click(object sender,RoutedEventArgs e)=>DetailPanelService.Toggle(ListRow,DetailRow,ExpandDetailButton,125,105);
 
     private void SetBusy(bool busy)
     {
