@@ -1,6 +1,7 @@
 <Window x:Class="DBACheck2.App.AssessmentWindow"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:models="clr-namespace:DBACheck2.App.Models"
  Title="DBACHECK 2 - Assessment" Background="#0A0D18">
 <Grid Margin="12">
  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
@@ -109,7 +110,7 @@
             <Setter Property="BorderBrush" Value="#35506F"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Style.Triggers>
-             <DataTrigger Binding="{Binding Mode}" Value="Full">
+             <DataTrigger Binding="{Binding Mode}" Value="{x:Static models:AssessmentMode.Full}">
               <Setter Property="Visibility" Value="Visible"/>
              </DataTrigger>
             </Style.Triggers>
