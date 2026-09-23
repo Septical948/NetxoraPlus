@@ -120,6 +120,24 @@ TOP FINDINGS
 {string.Join(Environment.NewLine,findings.Select(x=>$"[{x.Status}] {x.Category} / {x.Title}: {x.Summary}"))}";
     }
 
-    private void ExpandDetailButton_Click(object sender,RoutedEventArgs e)=>DetailPanelService.Toggle(DetailRow,ExpandDetailButton,125);
+    private bool _detailExpanded;
+    private void ExpandDetailButton_Click(object sender,RoutedEventArgs e)
+    {
+        _detailExpanded=!_detailExpanded;
+        if(_detailExpanded)
+        {
+            ChecksGrid.MinHeight=120;
+            ChecksRow.Height=new GridLength(155);
+            DetailRow.Height=new GridLength(1,GridUnitType.Star);
+            ExpandDetailButton.Content=En?"COLLAPSE":"CONTRAER";
+        }
+        else
+        {
+            ChecksGrid.MinHeight=220;
+            ChecksRow.Height=new GridLength(1,GridUnitType.Star);
+            DetailRow.Height=new GridLength(125);
+            ExpandDetailButton.Content=En?"EXPAND":"EXPANDIR";
+        }
+    }
     private void SetBusy(bool busy){RunButton.IsEnabled=!busy;ProfileBox.IsEnabled=!busy;ModeBox.IsEnabled=!busy;}
 }
