@@ -182,3 +182,120 @@ For each legacy check:
 8. only then mark the legacy check as migrated
 
 This prevents knowledge loss while allowing DBACHECK2 to become truly multi-engine.
+
+
+## Capability-first compatibility model
+
+Full Assessment no longer assumes that all supported servers expose the same catalog views, DMVs or functions.
+
+Every engine pack follows this rule:
+
+```
+concept -> detect version/capability -> choose compatible collector
+                                 -> AVAILABLE
+                                 -> NO PERMISSION
+                                 -> NOT ENABLED
+                                 -> UNSUPPORTED
+                                 -> UNAVAILABLE
+```
+
+A missing modern view on an old server must not fail the complete assessment.
+
+### SQL Server legacy behavior
+
+SQL Server Full Assessment executes the original DBAHEALTCHECK SQL library. If an original check references a DMV, column, function or object that does not exist on the detected SQL Server release, DBACHECK records that check as `UNSUPPORTED` instead of terminating the run.
+
+Permission failures are recorded as `NO PERMISSION`.
+
+### PostgreSQL Full Pack 1
+
+The first engine-native PostgreSQL pack now covers:
+
+- database capacity
+- connection saturation
+- long transactions
+- idle in transaction
+- blocking / lock waits
+- XID age
+- vacuum / analyze evidence
+- dead tuples
+- unused index candidates
+- invalid indexes
+- sequential-scan candidates
+- WAL archiver
+- replication slots when supported
+- streaming replication
+- version-aware checkpoint statistics
+- core memory/WAL settings
+- pg_stat_statements capability
+- backup evidence boundary
+
+Version-specific behavior includes old `waiting` lock evidence before PostgreSQL 9.6, XLOG function names before PostgreSQL 10, and `pg_stat_checkpointer` on PostgreSQL 17+.
+
+### Oracle Full Pack 1
+
+Oracle Full Assessment uses the configured provider mode:
+
+- Modern ODP.NET
+- Legacy OraOLEDB
+- Auto fallback
+
+The pack preserves the same DBA concepts while degrading according to release capability. It currently covers:
+
+- sessions/processes capacity
+- transactions
+- blocking
+- tablespace capacity
+- TEMP capacity
+- archive mode
+- redo configuration and switch frequency
+- unusable indexes
+- duplicate index definitions
+- invalid objects
+- statistics recency/staleness
+- DBMS_JOB on legacy releases
+- Scheduler jobs on modern releases
+- core configuration
+- database role
+- FRA where supported
+- RMAN evidence where supported
+- UNDO management vs legacy rollback-segment boundary
+
+Oracle 8i/9i-specific gaps are represented as `UNSUPPORTED` or `UNAVAILABLE`; the assessment is not aborted.
+
+### MySQL / MariaDB Full Pack 1
+
+The first MySQL/MariaDB pack covers:
+
+- connection capacity
+- long InnoDB transactions
+- long SQL
+- lock waits
+- database size
+- duplicate index definitions
+- unused index candidates when Performance Schema evidence exists
+- tables without primary keys
+- large DATA_FREE candidates
+- temporary-table disk ratio
+- InnoDB buffer/dirty-page evidence
+- deadlock counter
+- binary-log configuration
+- replication
+- core InnoDB settings
+- Event Scheduler
+- backup evidence boundary
+
+Compatibility rules distinguish MariaDB, MySQL 5.x and MySQL 8.x. For example, replication uses legacy `SHOW SLAVE STATUS` on MariaDB/MySQL 5.x and `SHOW REPLICA STATUS` on MySQL 8.x.
+
+### Design rule: preserve concept, not SQL syntax
+
+Checks are not mechanically translated across engines.
+
+Examples:
+
+- SQL Server heap detection does not become an Oracle "heap problem".
+- SQL Server 900-byte index checks are SQL Server-specific.
+- unused-index evidence is only reported where the engine provides sufficiently meaningful usage instrumentation.
+- backup status is not inferred when the engine has no authoritative universal backup history.
+
+The common layer is the DBA question being asked; the implementation and capability boundary remain engine-native.
