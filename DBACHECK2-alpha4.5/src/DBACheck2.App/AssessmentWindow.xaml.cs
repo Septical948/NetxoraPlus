@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using DBACheck2.App.Models;
 using DBACheck2.App.Services;
+using Microsoft.Win32;
 
 namespace DBACheck2.App;
 
@@ -10,6 +11,7 @@ public partial class AssessmentWindow:Window
     private readonly ServerProfileService _profiles=new();
     private readonly AssessmentService _assessment=new();
     private readonly AssessmentHistoryService _history=new();
+    private readonly AssessmentExportService _export=new();
     private List<ServerProfile> _profileItems=new();
     private AssessmentRun? _current;
     private CancellationTokenSource? _assessmentCts;
@@ -134,6 +136,41 @@ SAFETY
     }
 
     private async void RefreshHistoryButton_Click(object sender,RoutedEventArgs e)=>await LoadHistoryAsync();
+
+    private async void DownloadAssessment_Click(object sender,RoutedEventArgs e)
+    {
+        if(sender is not FrameworkElement element || element.DataContext is not AssessmentRun run)return;
+        if(!run.CanExport)
+        {
+            HistoryStatusText.Text=En
+                ?"Only completed Full assessments can be exported."
+                :"Sólo se pueden exportar assessments Full completos.";
+            return;
+        }
+
+        var dialog=new SaveFileDialog {
+            Title=En?"Download Full Assessment":"Descargar Assessment Full",
+            Filter="HTML report (*.html)|*.html",
+            FileName=_export.SuggestedFileName(run),
+            AddExtension=true,
+            DefaultExt=".html",
+            OverwritePrompt=true
+        };
+
+        if(dialog.ShowDialog()!=true)return;
+
+        try
+        {
+            await _export.ExportHtmlAsync(run,dialog.FileName);
+            HistoryStatusText.Text=En
+                ?$"Full Assessment exported: {dialog.FileName}"
+                :$"Assessment Full exportado: {dialog.FileName}";
+        }
+        catch(Exception ex)
+        {
+            HistoryStatusText.Text="ERROR: "+ex.Message;
+        }
+    }
 
     private void HistoryGrid_SelectionChanged(object sender,SelectionChangedEventArgs e)
     {
