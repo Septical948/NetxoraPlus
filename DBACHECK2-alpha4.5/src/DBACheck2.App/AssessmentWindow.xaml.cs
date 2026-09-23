@@ -58,7 +58,9 @@ public partial class AssessmentWindow:Window
         var progress=new Progress<string>(message=>StatusText.Text=message);
         try
         {
-            SetBusy(true);StatusText.Text=En?"Running read-only assessment...":"Ejecutando evaluación de solo lectura...";
+            SetBusy(true);
+            ResetRunView();
+            StatusText.Text=En?"Running read-only assessment...":"Ejecutando evaluación de solo lectura...";
             _current=await _assessment.RunAsync(profile,mode,_assessmentCts.Token,progress);
             await _history.SaveAsync(_current);
             ChecksGrid.ItemsSource=_current.Checks;
@@ -72,7 +74,11 @@ public partial class AssessmentWindow:Window
                 ?"Assessment stopped by operator. The interrupted run was not saved to history."
                 :"Evaluación detenida por el operador. La ejecución interrumpida no se guardó en el historial.";
         }
-        catch(Exception ex){StatusText.Text="ERROR: "+ex.Message;}
+        catch(Exception ex)
+        {
+            StatusText.Text="ERROR: "+ex.Message;
+            DetailText.Text=(En?"Assessment failed.\n\n":"La evaluación falló.\n\n")+ex;
+        }
         finally
         {
             SetBusy(false);
@@ -151,17 +157,34 @@ TOP FINDINGS
         if(_detailExpanded)
         {
             ChecksGrid.MinHeight=120;
-            ChecksRow.Height=new GridLength(155);
+            ChecksRow.Height=new GridLength(180);
             DetailRow.Height=new GridLength(1,GridUnitType.Star);
             ExpandDetailButton.Content=En?"COLLAPSE":"CONTRAER";
         }
         else
         {
-            ChecksGrid.MinHeight=220;
+            ChecksGrid.MinHeight=120;
             ChecksRow.Height=new GridLength(1,GridUnitType.Star);
-            DetailRow.Height=new GridLength(125);
+            DetailRow.Height=new GridLength(0);
             ExpandDetailButton.Content=En?"EXPAND":"EXPANDIR";
         }
+    }
+
+    private void ResetRunView()
+    {
+        _current=null;
+        ChecksGrid.ItemsSource=null;
+        ChecksGrid.SelectedItem=null;
+        OverallText.Text=En?"RUNNING":"EJECUTANDO";
+        CriticalText.Text="0";WarningText.Text="0";OkText.Text="0";InfoText.Text="0";
+        DetailText.Text=En
+            ?"Assessment is running. Select a finding after completion to inspect its evidence."
+            :"La evaluación está en ejecución. Seleccioná un hallazgo al finalizar para revisar su evidencia.";
+        _detailExpanded=false;
+        ChecksGrid.MinHeight=120;
+        ChecksRow.Height=new GridLength(1,GridUnitType.Star);
+        DetailRow.Height=new GridLength(0);
+        ExpandDetailButton.Content=En?"EXPAND":"EXPANDIR";
     }
     private void SetBusy(bool busy)
     {
