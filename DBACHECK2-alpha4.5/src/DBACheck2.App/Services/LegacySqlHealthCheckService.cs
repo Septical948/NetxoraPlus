@@ -14,7 +14,7 @@ public sealed class LegacySqlHealthCheckService
 
     public LegacySqlHealthCheckService(ServerProfile profile)=>_profile=profile;
 
-    public async Task<List<AssessmentCheck>> RunFullAsync()
+    public async Task<List<AssessmentCheck>> RunFullAsync(CancellationToken cancellationToken=default,IProgress<string>? progress=null)
     {
         var scripts=LoadEmbeddedScripts();
         var unique=new List<LegacyScript>();
@@ -32,10 +32,16 @@ public sealed class LegacySqlHealthCheckService
 
         var result=new List<AssessmentCheck>();
         await using var cn=new SqlConnection(BuildConnectionString());
-        await cn.OpenAsync();
+        await cn.OpenAsync(cancellationToken);
 
-        foreach(var script in unique.OrderBy(x=>x.Order).ThenBy(x=>x.FileName,StringComparer.OrdinalIgnoreCase))
-            result.Add(await ExecuteAsync(cn,script));
+        var ordered=unique.OrderBy(x=>x.Order).ThenBy(x=>x.FileName,StringComparer.OrdinalIgnoreCase).ToList();
+        for(var i=0;i<ordered.Count;i++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var script=ordered[i];
+            progress?.Report($"DBAHEALTCHECK {i+1}/{ordered.Count} · {script.FileName}");
+            result.Add(await ExecuteAsync(cn,script,cancellationToken));
+        }
 
         return result;
     }
@@ -68,7 +74,7 @@ public sealed class LegacySqlHealthCheckService
         return b.ConnectionString;
     }
 
-    private async Task<AssessmentCheck> ExecuteAsync(SqlConnection cn,LegacyScript script)
+    private async Task<AssessmentCheck> ExecuteAsync(SqlConnection cn,LegacyScript script,CancellationToken cancellationToken)
     {
         var started=DateTime.Now;
         try
@@ -79,9 +85,11 @@ public sealed class LegacySqlHealthCheckService
 
             foreach(var batch in SplitBatches(script.Sql))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if(string.IsNullOrWhiteSpace(batch))continue;
                 await using var cmd=new SqlCommand(batch,cn){CommandTimeout=120};
-                await using var reader=await cmd.ExecuteReaderAsync();
+                await using var registration=cancellationToken.Register(()=>{try{cmd.Cancel();}catch{}});
+                await using var reader=await cmd.ExecuteReaderAsync(cancellationToken);
 
                 do
                 {
@@ -91,7 +99,7 @@ public sealed class LegacySqlHealthCheckService
                     evidence.AppendLine(string.Join(" | ",Enumerable.Range(0,reader.FieldCount).Select(reader.GetName)));
 
                     var shown=0;
-                    while(await reader.ReadAsync())
+                    while(await reader.ReadAsync(cancellationToken))
                     {
                         totalRows++;
                         if(shown<500)
@@ -108,7 +116,7 @@ public sealed class LegacySqlHealthCheckService
                     }
                     if(totalRows>shown)evidence.AppendLine($"... output truncated in UI; total rows seen so far: {totalRows}");
                     evidence.AppendLine();
-                } while(await reader.NextResultAsync());
+                } while(await reader.NextResultAsync(cancellationToken));
             }
 
             var status=ClassifyStatus(script.FileName,totalRows);
@@ -130,6 +138,7 @@ public sealed class LegacySqlHealthCheckService
                 Timestamp=DateTime.Now
             };
         }
+        catch(OperationCanceledException){throw;}
         catch(Exception ex)
         {
             var noPermission=ex is SqlException pex && pex.Number is 229 or 297;
