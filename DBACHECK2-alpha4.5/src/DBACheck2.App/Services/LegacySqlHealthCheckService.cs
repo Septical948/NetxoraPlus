@@ -131,19 +131,30 @@ public sealed class LegacySqlHealthCheckService
         }
         catch(Exception ex)
         {
+            var noPermission=ex is SqlException pex && pex.Number is 229 or 297;
+            var unsupported=ex is SqlException sex && sex.Number is 102 or 195 or 207 or 208 or 2812 or 4121;
+            var status=noPermission?"NO PERMISSION":unsupported?"UNSUPPORTED":"ERROR";
             return new AssessmentCheck {
                 CheckId=$"SQLSERVER:LEGACY:{script.FileName}".ToUpperInvariant(),
                 Engine=DatabaseEngine.SqlServer,
                 Category=Category(script.FileName),
                 Title=Path.GetFileNameWithoutExtension(script.FileName),
-                Status=ex is SqlException sql && sql.Number==229?"NO PERMISSION":"ERROR",
-                Severity=ex is SqlException sql2 && sql2.Number==229?2:4,
-                Summary=$"Legacy HealthCheck query failed: {ex.Message}",
-                Evidence=$"SOURCE: {script.SourceFolder} / {script.FileName}\n{ex}",
-                WhyItMatters="This legacy DBAHEALTCHECK check could not be evaluated, so the assessment is incomplete for this item.",
-                RecommendedAction="Review SQL Server version, permissions and query compatibility. Do not change the database only to satisfy the assessment.",
-                Verification="Re-run this check after correcting the compatibility or permission issue.",
-                Capability=ex is SqlException sql3 && sql3.Number==229?"NO PERMISSION":"ERROR",
+                Status=status,
+                Severity=status=="NO PERMISSION"?2:status=="UNSUPPORTED"?1:4,
+                Summary=status=="UNSUPPORTED"
+                    ? $"Original DBAHEALTCHECK query is not supported by this SQL Server capability/version."
+                    : status=="NO PERMISSION"
+                        ? "Insufficient privileges for this original DBAHEALTCHECK query."
+                        : $"Legacy HealthCheck query failed: {ex.Message}",
+                Evidence=$"SOURCE: {script.SourceFolder} / {script.FileName}\nSERVER VERSION: {cn.ServerVersion}\n{ex.Message}",
+                WhyItMatters="The original DBAHEALTCHECK check is preserved, but DBACHECK reports capability limits instead of failing the complete assessment.",
+                RecommendedAction=status=="UNSUPPORTED"
+                    ? "No production change is required. Use the checks supported by this SQL Server release and document the unavailable capability."
+                    : status=="NO PERMISSION"
+                        ? "Grant only the minimum read permission required, or document the limitation."
+                        : "Review query compatibility and collector behavior; do not change production only to satisfy the assessment.",
+                Verification="Re-run this check after an engine upgrade, permission correction or collector fix as applicable.",
+                Capability=status,
                 ReadOnly=true,
                 DurationMs=(long)(DateTime.Now-started).TotalMilliseconds,
                 Timestamp=DateTime.Now
