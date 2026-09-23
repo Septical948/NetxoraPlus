@@ -113,6 +113,12 @@
                                 </StackPanel>
                             </Expander>
 
+                            <Expander x:Name="AssessmentExpander" Style="{StaticResource SectionExpander}" Header="ASSESSMENT" IsExpanded="False" Expanded="NavExpander_Expanded">
+                                <StackPanel>
+                                    <Button x:Name="AssessmentButton" Style="{StaticResource NavButton}" Content="Health Assessment" Click="AssessmentButton_Click"/>
+                                </StackPanel>
+                            </Expander>
+
                             <Expander x:Name="IntegrationsExpander" Style="{StaticResource SectionExpander}" Header="INTEGRATIONS" IsExpanded="False" Expanded="NavExpander_Expanded">
                                 <StackPanel>
                                     <Button x:Name="IntegrationsButton" Style="{StaticResource NavButton}" Content="Monitoring Integrations" Click="IntegrationsButton_Click"/>
