@@ -7,6 +7,7 @@ public sealed class PostgreSqlAssessmentPackService
 {
     private readonly ServerProfile p;
     private readonly string cs;
+    private CancellationToken _cancellationToken;
     public PostgreSqlAssessmentPackService(ServerProfile profile)
     {
         p=profile;
@@ -20,6 +21,7 @@ public sealed class PostgreSqlAssessmentPackService
 
     public async Task<List<AssessmentCheck>> RunFullAsync(CancellationToken cancellationToken=default)
     {
+        _cancellationToken=cancellationToken;
         var x=new List<AssessmentCheck>();
         await using var c=new NpgsqlConnection(cs);await c.OpenAsync(cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
@@ -78,7 +80,7 @@ public sealed class PostgreSqlAssessmentPackService
         return x;
     }
 
-    private static async Task<AssessmentCheck> Blocking(NpgsqlConnection c,Version v)
+    private async Task<AssessmentCheck> Blocking(NpgsqlConnection c,Version v)
     {
         var sql=v.Major>=10 || (v.Major==9&&v.Minor>=6)
             ? @"SELECT CASE WHEN COUNT(*)>0 THEN 'WARNING' ELSE 'OK' END,COUNT(*)||' session(s) waiting on Lock',COALESCE(string_agg('pid='||pid||' '||COALESCE(wait_event,''), '; '),'') FROM pg_stat_activity WHERE wait_event_type='Lock';"
@@ -86,11 +88,12 @@ public sealed class PostgreSqlAssessmentPackService
         return await Q(c,"PG.PERF.BLOCKING",AssessmentCategory.Performance,"Blocking / Lock Waits",sql);
     }
 
-    private static async Task<AssessmentCheck> Replication(NpgsqlConnection c,Version v)
+    private async Task<AssessmentCheck> Replication(NpgsqlConnection c,Version v)
     {
         try
         {
-            await using var q=new NpgsqlCommand("SELECT pg_is_in_recovery()",c);var standby=Convert.ToBoolean(await q.ExecuteScalarAsync());
+            _cancellationToken.ThrowIfCancellationRequested();
+            await using var q=new NpgsqlCommand("SELECT pg_is_in_recovery()",c);var standby=Convert.ToBoolean(await q.ExecuteScalarAsync(_cancellationToken));
             if(standby)
             {
                 var sql=v.Major>=10
@@ -99,10 +102,10 @@ public sealed class PostgreSqlAssessmentPackService
                 return await Q(c,"PG.HA.REPLICATION",AssessmentCategory.HighAvailability,"Streaming Replication",sql);
             }
             return await Q(c,"PG.HA.REPLICATION",AssessmentCategory.HighAvailability,"Streaming Replication",@"SELECT CASE WHEN COUNT(*)>0 THEN 'OK' ELSE 'INFO' END,COUNT(*)||' streaming replica(s)',COALESCE(string_agg(COALESCE(client_addr::text,'local')||' state='||COALESCE(state,''), '; '),'') FROM pg_stat_replication;");
-        }catch(Exception ex){return Error("PG.HA.REPLICATION",AssessmentCategory.HighAvailability,"Streaming Replication",ex);}
+        }catch(OperationCanceledException){throw;}catch(Exception ex){return Error("PG.HA.REPLICATION",AssessmentCategory.HighAvailability,"Streaming Replication",ex);}
     }
 
-    private static Task<AssessmentCheck> Checkpoints(NpgsqlConnection c,Version v)
+    private Task<AssessmentCheck> Checkpoints(NpgsqlConnection c,Version v)
     {
         var sql=v.Major>=17
             ? @"SELECT 'INFO','Checkpoint activity','timed='||num_timed||'; requested='||num_requested||'; write_ms='||write_time||'; sync_ms='||sync_time FROM pg_stat_checkpointer;"
@@ -110,27 +113,32 @@ public sealed class PostgreSqlAssessmentPackService
         return Q(c,"PG.PERF.CHECKPOINTS",AssessmentCategory.Performance,"Checkpoint Activity",sql);
     }
 
-    private static async Task<AssessmentCheck> PgStatStatements(NpgsqlConnection c)
+    private async Task<AssessmentCheck> PgStatStatements(NpgsqlConnection c)
     {
         try
         {
+            _cancellationToken.ThrowIfCancellationRequested();
             await using var q=new NpgsqlCommand("SELECT COUNT(*) FROM pg_extension WHERE extname='pg_stat_statements'",c);
-            var installed=Convert.ToInt32(await q.ExecuteScalarAsync())>0;
+            var installed=Convert.ToInt32(await q.ExecuteScalarAsync(_cancellationToken))>0;
             return installed
                 ? Info("PG.PERF.PGSS",AssessmentCategory.Performance,"pg_stat_statements","Extension installed","Detailed SQL workload assessment can use pg_stat_statements.","AVAILABLE")
                 : new AssessmentCheck{CheckId="PG.PERF.PGSS",Engine=DatabaseEngine.PostgreSql,Category=AssessmentCategory.Performance,Title="pg_stat_statements",Status="NOT ENABLED",Severity=1,Summary="Extension not installed",Evidence="pg_stat_statements is not present in pg_extension.",WhyItMatters="Without it, historical SQL-level workload analysis is limited.",RecommendedAction="Enable only if operational policy permits; DBACHECK does not enable extensions automatically.",Verification="Re-run the assessment after extension deployment.",Capability="NOT ENABLED",ReadOnly=true};
-        }catch(Exception ex){return Error("PG.PERF.PGSS",AssessmentCategory.Performance,"pg_stat_statements",ex);}
+        }catch(OperationCanceledException){throw;}catch(Exception ex){return Error("PG.PERF.PGSS",AssessmentCategory.Performance,"pg_stat_statements",ex);}
     }
 
-    private static async Task<AssessmentCheck> Q(NpgsqlConnection c,string id,AssessmentCategory category,string title,string sql)
+    private async Task<AssessmentCheck> Q(NpgsqlConnection c,string id,AssessmentCategory category,string title,string sql)
     {
         var started=DateTime.Now;
         try
         {
-            await using var q=new NpgsqlCommand(sql,c){CommandTimeout=30};await using var r=await q.ExecuteReaderAsync();await r.ReadAsync();
+            _cancellationToken.ThrowIfCancellationRequested();
+            await using var q=new NpgsqlCommand(sql,c){CommandTimeout=30};
+            await using var r=await q.ExecuteReaderAsync(_cancellationToken);
+            await r.ReadAsync(_cancellationToken);
             var status=Convert.ToString(r.GetValue(0))??"INFO";
             return new(){CheckId=id,Engine=DatabaseEngine.PostgreSql,Category=category,Title=title,Status=status,Severity=Severity(status),Summary=Convert.ToString(r.GetValue(1))??"",Evidence=Convert.ToString(r.GetValue(2))??"",WhyItMatters=Why(category),RecommendedAction=Action(category,status),Verification=Verify(category),Capability="AVAILABLE",ReadOnly=true,DurationMs=(long)(DateTime.Now-started).TotalMilliseconds,Timestamp=DateTime.Now};
         }
+        catch(OperationCanceledException){throw;}
         catch(PostgresException ex) when(ex.SqlState=="42501"){return NoPermission(id,category,title,ex.MessageText);}
         catch(PostgresException ex) when(ex.SqlState is "42703" or "42883" or "42P01"){return Unsupported(id,category,title,ex.MessageText);}
         catch(Exception ex){return Error(id,category,title,ex);}
