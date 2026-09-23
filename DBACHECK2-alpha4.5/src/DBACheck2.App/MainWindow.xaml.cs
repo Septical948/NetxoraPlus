@@ -17,6 +17,8 @@ public partial class MainWindow : Window
     private DatabaseEngine _activeEngine=DatabaseEngine.SqlServer;
     private string _activeProfileName="Manual";
     private ServerProfile? _activeProfile;
+    private readonly UpdateCheckService _updateCheck=new();
+    private string? _latestReleaseUrl;
 
     public MainWindow()
     {
@@ -26,11 +28,66 @@ public partial class MainWindow : Window
         LanguageBox.SelectedIndex=LocalizationService.Current==AppLanguage.Es?0:1;
         ApplyLanguage();
         SourceInitialized+=(_,__)=>((HwndSource)PresentationSource.FromVisual(this)).AddHook(WindowProc);
-        Loaded+=async(_,__)=>{UpdateMaximizeButton();await OpenStartupViewAsync();};
+        Loaded+=async(_,__)=>{UpdateMaximizeButton();await OpenStartupViewAsync();_ = CheckForUpdatesAsync(false);};
         ServerBox.TextChanged += (_,__) => {
             TargetContextText.Text=string.IsNullOrWhiteSpace(ServerBox.Text)?"Sin destino":ServerBox.Text.Trim();
             SetConnectionState("NO VERIFICADA","#263244","#B7C3D7");
         };
+    }
+
+    private void SettingsButton_Click(object sender,RoutedEventArgs e)
+    {
+        var window=new SettingsWindow();
+        window.LanguageChanged+=lang=>{
+            LanguageBox.SelectedIndex=lang==AppLanguage.En?1:0;
+            ApplyLanguage();
+            UiLocalizationService.Apply(ModuleHost);
+        };
+        HostAnalyzer(window);
+    }
+
+    private void SupportButton_Click(object sender,RoutedEventArgs e)=>HostAnalyzer(new SupportWindow());
+
+    private async void UpdateButton_Click(object sender,RoutedEventArgs e)
+    {
+        if(!string.IsNullOrWhiteSpace(_latestReleaseUrl) && UpdateButton.Tag?.ToString()=="available")
+        {
+            Process.Start(new ProcessStartInfo(_latestReleaseUrl){UseShellExecute=true});
+            return;
+        }
+        await CheckForUpdatesAsync(true);
+    }
+
+    private async Task CheckForUpdatesAsync(bool userRequested)
+    {
+        UpdateButton.IsEnabled=false;
+        UpdateButton.Content=LocalizationService.Current==AppLanguage.En?"↻ CHECKING":"↻ VERIFICANDO";
+        var result=await _updateCheck.CheckAsync();
+        _latestReleaseUrl=result.ReleaseUrl;
+        UpdateButton.Tag=result.State==UpdateState.UpdateAvailable?"available":"";
+        switch(result.State)
+        {
+            case UpdateState.UpToDate:
+                UpdateButton.Content=LocalizationService.Current==AppLanguage.En?"✓ UP TO DATE":"✓ ACTUALIZADO";
+                UpdateButton.Foreground=(Brush)new BrushConverter().ConvertFromString("#36D399")!;
+                break;
+            case UpdateState.UpdateAvailable:
+                UpdateButton.Content=LocalizationService.Current==AppLanguage.En?"↑ UPDATE AVAILABLE":"↑ ACTUALIZACIÓN";
+                UpdateButton.Foreground=(Brush)new BrushConverter().ConvertFromString("#F0B45A")!;
+                break;
+            case UpdateState.NoPublishedRelease:
+                UpdateButton.Content=LocalizationService.Current==AppLanguage.En?"✓ DEV CHANNEL":"✓ CANAL DEV";
+                UpdateButton.Foreground=(Brush)new BrushConverter().ConvertFromString("#BDA7FF")!;
+                break;
+            default:
+                UpdateButton.Content=LocalizationService.Current==AppLanguage.En?"! CHECK FAILED":"! ERROR UPDATE";
+                UpdateButton.Foreground=(Brush)new BrushConverter().ConvertFromString("#FF6B7A")!;
+                break;
+        }
+        UpdateButton.ToolTip=result.Message;
+        UpdateButton.IsEnabled=true;
+        if(userRequested && result.State==UpdateState.UpdateAvailable && !string.IsNullOrWhiteSpace(result.ReleaseUrl))
+            UpdateButton.ToolTip=result.Message+" Click again to open the release.";
     }
 
     private async Task OpenStartupViewAsync()
@@ -192,7 +249,9 @@ public partial class MainWindow : Window
         QuickTitleText.Text=LocalizationService.T("Quick.Title"); QuickSubtitleText.Text=LocalizationService.T("Quick.Subtitle"); StatusText.Text=LocalizationService.T("Quick.Ready"); DetailText.Text=LocalizationService.T("Quick.SelectEvidence"); InsightHealthLabel.Text=LocalizationService.T("Insight.Health"); InsightAlertLabel.Text=LocalizationService.T("Insight.Alerts"); InsightTopLabel.Text=LocalizationService.T("Insight.Top"); InsightEngineLabel.Text=LocalizationService.T("Insight.Engine");
         StatusColumn.Header=LocalizationService.T("Grid.Status"); AreaColumn.Header=LocalizationService.T("Grid.Area"); SummaryColumn.Header=LocalizationService.T("Grid.Summary"); EvidenceColumn.Header=LocalizationService.T("Grid.Evidence");
         EvidenceTitleText.Text=LocalizationService.T("Grid.EvidenceTitle"); EvidenceExpandButton.Content=DetailText.MaxHeight>200?(LocalizationService.Current==AppLanguage.En?"COLLAPSE":"CONTRAER"):(LocalizationService.Current==AppLanguage.En?"EXPAND":"EXPANDIR"); LanguageLabelText.Text=LocalizationService.T("Language.Label");
-        FooterText.Text=$"DBACHECK 2 Beta 1 | Multi-engine | {LocalizationService.T("Common.ReadOnly")}";
+        FooterText.Text=$"DBACHECK 2 Beta 2 | Multi-engine | {LocalizationService.T("Common.ReadOnly")}";
+        SettingsButton.ToolTip=LocalizationService.Current==AppLanguage.En?"Settings":"Configuración";
+        SupportButton.ToolTip=LocalizationService.Current==AppLanguage.En?"Support":"Soporte";
         ApplyEngineNavigation(_activeEngine);
     }
 
@@ -296,7 +355,7 @@ public partial class MainWindow : Window
 
     private void HealthGrid_SelectionChanged(object sender,SelectionChangedEventArgs e){if(HealthGrid.SelectedItem is HealthItem item)DetailText.Text=$"{item.Status} | {item.Area}\n{item.Summary}\n\n{item.Detail}";}
     private void EvidenceExpandButton_Click(object sender,RoutedEventArgs e){var expanded=DetailText.MaxHeight>200;DetailText.MaxHeight=expanded?120:360;EvidenceExpandButton.Content=expanded?(LocalizationService.Current==AppLanguage.En?"EXPAND":"EXPANDIR"):(LocalizationService.Current==AppLanguage.En?"COLLAPSE":"CONTRAER");}
-    private void SetBusy(bool busy,string? text=null){TestButton.IsEnabled=!busy;QuickButton.IsEnabled=!busy;IncidentButton.IsEnabled=!busy;BlockingButton.IsEnabled=!busy;TempDbButton.IsEnabled=!busy;LogButton.IsEnabled=!busy;BackupJobsButton.IsEnabled=!busy;AlwaysOnButton.IsEnabled=!busy;PerformanceButton.IsEnabled=!busy;IntegrationsButton.IsEnabled=!busy;AlertInboxButton.IsEnabled=!busy;HistoryButton.IsEnabled=!busy;OperationsButton.IsEnabled=!busy;AssistantButton.IsEnabled=!busy;if(text!=null)StatusText.Text=text;}
+    private void SetBusy(bool busy,string? text=null){TestButton.IsEnabled=!busy;QuickButton.IsEnabled=!busy;IncidentButton.IsEnabled=!busy;BlockingButton.IsEnabled=!busy;TempDbButton.IsEnabled=!busy;LogButton.IsEnabled=!busy;BackupJobsButton.IsEnabled=!busy;AlwaysOnButton.IsEnabled=!busy;PerformanceButton.IsEnabled=!busy;IntegrationsButton.IsEnabled=!busy;AlertInboxButton.IsEnabled=!busy;HistoryButton.IsEnabled=!busy;OperationsButton.IsEnabled=!busy;AssistantButton.IsEnabled=!busy;SettingsButton.IsEnabled=!busy;SupportButton.IsEnabled=!busy;if(text!=null)StatusText.Text=text;}
     private string _connectionVisualState="pending";
     private void SetConnectionState(string text,string background,string foreground)
     {
