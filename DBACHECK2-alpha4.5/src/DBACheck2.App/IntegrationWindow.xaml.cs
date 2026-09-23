@@ -150,6 +150,6 @@ public partial class IntegrationWindow:Window
         finally{SetBusy(false);CreateIncidentButton.IsEnabled=_lastDiagnosis is not null;}
     }
 
-    private void ExpandDetailButton_Click(object s,RoutedEventArgs e)=>DetailPanelService.Toggle(DetailRow,ExpandDetailButton);
+    private void ExpandDetailButton_Click(object s,RoutedEventArgs e)=>DetailPanelService.Toggle(ListRow,DetailRow,ExpandDetailButton,125,105);
     private void SetBusy(bool busy){SaveButton.IsEnabled=!busy;DeleteButton.IsEnabled=!busy;TestButton.IsEnabled=!busy;LoadProblemsButton.IsEnabled=!busy;DiagnoseButton.IsEnabled=!busy&&EventsGrid.SelectedItem is IntegrationEvent;CreateIncidentButton.IsEnabled=!busy&&_lastDiagnosis is not null;}
 }
