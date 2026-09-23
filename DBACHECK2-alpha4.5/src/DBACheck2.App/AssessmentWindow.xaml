@@ -1,0 +1,93 @@
+<Window x:Class="DBACheck2.App.AssessmentWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="DBACHECK 2 - Assessment" Background="#0A0D18">
+<Grid Margin="12">
+ <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+
+ <StackPanel Margin="0,0,0,12">
+  <TextBlock x:Name="TitleText" Text="ASSESSMENT" Foreground="#38E8D0" FontSize="24" FontWeight="Bold"/>
+  <TextBlock x:Name="SubtitleText" Text="Multi-engine health assessment · Read-only baseline" Foreground="#B7C3D7"/>
+ </StackPanel>
+
+ <TabControl Grid.Row="1" Background="#0A0D18" BorderThickness="0">
+  <TabItem x:Name="RunTab" Header="RUN ASSESSMENT">
+   <Grid Margin="0,10,0,0">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition x:Name="DetailRow" Height="180"/></Grid.RowDefinitions>
+
+    <Border Background="#111628" BorderBrush="#302B4E" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+     <Grid>
+      <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="1*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <StackPanel Margin="0,0,8,0">
+       <TextBlock x:Name="ProfileLabel" Text="PROFILE" Foreground="#8F9BB3" FontWeight="Bold" FontSize="10"/>
+       <ComboBox x:Name="ProfileBox" DisplayMemberPath="Display" MinWidth="360"/>
+      </StackPanel>
+      <StackPanel Grid.Column="1" Margin="0,0,8,0">
+       <TextBlock x:Name="ModeLabel" Text="MODE" Foreground="#8F9BB3" FontWeight="Bold" FontSize="10"/>
+       <ComboBox x:Name="ModeBox"/>
+      </StackPanel>
+      <Button Grid.Column="2" x:Name="RunButton" Content="RUN ASSESSMENT" MinWidth="150" Height="34" VerticalAlignment="Bottom" Click="RunButton_Click"/>
+      <TextBlock Grid.Column="3" x:Name="StatusText" Foreground="#D5DEEB" Margin="14,20,0,0" TextWrapping="Wrap"/>
+     </Grid>
+    </Border>
+
+    <UniformGrid Grid.Row="1" Columns="5" Margin="0,0,0,10">
+     <Border Background="#121427" BorderBrush="#302B4E" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,8,0"><StackPanel><TextBlock Text="OVERALL" Foreground="#8F9BB3" FontWeight="Bold"/><TextBlock x:Name="OverallText" Text="—" Foreground="#38E8D0" FontSize="18" FontWeight="Bold"/></StackPanel></Border>
+     <Border Background="#121427" BorderBrush="#302B4E" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,8,0"><StackPanel><TextBlock Text="CRITICAL" Foreground="#8F9BB3" FontWeight="Bold"/><TextBlock x:Name="CriticalText" Text="0" Foreground="#FF6B7A" FontSize="18" FontWeight="Bold"/></StackPanel></Border>
+     <Border Background="#121427" BorderBrush="#302B4E" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,8,0"><StackPanel><TextBlock Text="WARNING" Foreground="#8F9BB3" FontWeight="Bold"/><TextBlock x:Name="WarningText" Text="0" Foreground="#F0B45A" FontSize="18" FontWeight="Bold"/></StackPanel></Border>
+     <Border Background="#121427" BorderBrush="#302B4E" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,8,0"><StackPanel><TextBlock Text="OK" Foreground="#8F9BB3" FontWeight="Bold"/><TextBlock x:Name="OkText" Text="0" Foreground="#38E8D0" FontSize="18" FontWeight="Bold"/></StackPanel></Border>
+     <Border Background="#121427" BorderBrush="#302B4E" BorderThickness="1" CornerRadius="8" Padding="10"><StackPanel><TextBlock Text="INFO" Foreground="#8F9BB3" FontWeight="Bold"/><TextBlock x:Name="InfoText" Text="0" Foreground="#BDA7FF" FontSize="18" FontWeight="Bold"/></StackPanel></Border>
+    </UniformGrid>
+
+    <DataGrid x:Name="ChecksGrid" Grid.Row="2" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+      Background="#111C2F" Foreground="White" RowBackground="#111C2F" AlternatingRowBackground="#16243A" SelectionChanged="ChecksGrid_SelectionChanged">
+     <DataGrid.Columns>
+      <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="95"/>
+      <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="140"/>
+      <DataGridTextColumn Header="Check" Binding="{Binding Title}" Width="160"/>
+      <DataGridTextColumn Header="Summary" Binding="{Binding Summary}" Width="*"/>
+      <DataGridTextColumn Header="Capability" Binding="{Binding Capability}" Width="120"/>
+     </DataGrid.Columns>
+    </DataGrid>
+
+    <Grid Grid.Row="3" Margin="0,10,0,6">
+     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+     <TextBlock x:Name="DetailTitleText" Text="ASSESSMENT EVIDENCE" Foreground="#38E8D0" FontWeight="Bold"/>
+     <Button Grid.Column="1" x:Name="ExpandDetailButton" Content="EXPAND" Padding="12,4" Click="ExpandDetailButton_Click"/>
+    </Grid>
+
+    <TextBox x:Name="DetailText" Grid.Row="4" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Background="#111C2F" Foreground="#E8EDF7"
+      BorderThickness="0" Padding="12" FontFamily="Consolas" Text="Select a check to inspect evidence and remediation guidance."/>
+   </Grid>
+  </TabItem>
+
+  <TabItem x:Name="HistoryTab" Header="HISTORY">
+   <Grid Margin="0,10,0,0">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="180"/></Grid.RowDefinitions>
+    <Grid>
+     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+     <Button x:Name="RefreshHistoryButton" Content="REFRESH HISTORY" Padding="14,7" Click="RefreshHistoryButton_Click"/>
+     <TextBlock Grid.Column="1" x:Name="HistoryStatusText" Foreground="#D5DEEB" Margin="14,7,0,0"/>
+    </Grid>
+    <DataGrid x:Name="HistoryGrid" Grid.Row="1" Margin="0,10,0,10" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+      Background="#111C2F" Foreground="White" RowBackground="#111C2F" AlternatingRowBackground="#16243A" SelectionChanged="HistoryGrid_SelectionChanged">
+     <DataGrid.Columns>
+      <DataGridTextColumn Header="Started" Binding="{Binding StartedAt}" Width="155"/>
+      <DataGridTextColumn Header="Profile" Binding="{Binding ProfileName}" Width="150"/>
+      <DataGridTextColumn Header="Host" Binding="{Binding Host}" Width="150"/>
+      <DataGridTextColumn Header="Engine" Binding="{Binding Engine}" Width="110"/>
+      <DataGridTextColumn Header="Mode" Binding="{Binding Mode}" Width="80"/>
+      <DataGridTextColumn Header="Overall" Binding="{Binding Overall}" Width="90"/>
+      <DataGridTextColumn Header="Critical" Binding="{Binding Critical}" Width="70"/>
+      <DataGridTextColumn Header="Warning" Binding="{Binding Warning}" Width="70"/>
+      <DataGridTextColumn Header="OK" Binding="{Binding Ok}" Width="60"/>
+     </DataGrid.Columns>
+    </DataGrid>
+    <TextBox x:Name="HistoryDetailText" Grid.Row="2" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+      Background="#111C2F" Foreground="#E8EDF7" BorderThickness="0" Padding="12" FontFamily="Consolas" Text="Select a previous assessment."/>
+   </Grid>
+  </TabItem>
+ </TabControl>
+</Grid>
+</Window>
