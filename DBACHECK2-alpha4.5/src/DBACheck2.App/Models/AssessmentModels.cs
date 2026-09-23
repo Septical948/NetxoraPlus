@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace DBACheck2.App.Models;
 
 public enum AssessmentMode { Quick, Full }
@@ -41,4 +43,7 @@ public sealed class AssessmentRun
     public int Info => Checks.Count-Critical-Warning-Ok;
     public string Overall => Critical>0?"CRITICAL":Warning>0?"WARNING":"OK";
     public double DurationSeconds => Math.Max(0,(CompletedAt-StartedAt).TotalSeconds);
+
+    [JsonIgnore]
+    public bool CanExport => Mode==AssessmentMode.Full && Checks.Count>0;
 }
