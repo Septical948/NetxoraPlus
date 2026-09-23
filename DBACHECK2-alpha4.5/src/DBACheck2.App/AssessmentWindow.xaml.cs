@@ -86,8 +86,8 @@ public partial class AssessmentWindow:Window
         if(_assessmentCts is null || _assessmentCts.IsCancellationRequested)return;
         StopButton.IsEnabled=false;
         StatusText.Text=En
-            ?"Stopping assessment and cancelling the active query..."
-            :"Deteniendo evaluación y cancelando la consulta activa...";
+            ?"Stopping assessment and requesting cancellation of the active query..."
+            :"Deteniendo evaluación y solicitando la cancelación de la consulta activa...";
         _assessmentCts.Cancel();
     }
 
