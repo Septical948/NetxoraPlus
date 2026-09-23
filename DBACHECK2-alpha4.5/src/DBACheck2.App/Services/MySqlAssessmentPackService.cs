@@ -9,9 +9,13 @@ namespace DBACheck2.App.Services;
 public sealed class MySqlAssessmentPackService
 {
     private readonly ServerProfile p;
+    private CancellationToken _cancellationToken;
     public MySqlAssessmentPackService(ServerProfile profile)=>p=profile;
 
-    public Task<List<AssessmentCheck>> RunFullAsync(CancellationToken cancellationToken=default)=>WithConnection(async c=>
+    public Task<List<AssessmentCheck>> RunFullAsync(CancellationToken cancellationToken=default)
+    {
+        _cancellationToken=cancellationToken;
+        return WithConnection(async c=>
     {
         cancellationToken.ThrowIfCancellationRequested();
         var x=new List<AssessmentCheck>();
@@ -52,6 +56,7 @@ public sealed class MySqlAssessmentPackService
         cancellationToken.ThrowIfCancellationRequested();
         return x;
     },cancellationToken);
+    }
 
     private async Task<AssessmentCheck> Blocking(MySqlConnection c,bool maria,int major)
     {
@@ -66,8 +71,8 @@ public sealed class MySqlAssessmentPackService
         {
             var rows=new List<Idx>();
             await using var q=new MySqlCommand(@"select table_schema,table_name,index_name,non_unique,seq_in_index,column_name from information_schema.statistics where table_schema not in ('mysql','information_schema','performance_schema','sys') order by table_schema,table_name,index_name,seq_in_index",c){CommandTimeout=30};
-            await using var r=await q.ExecuteReaderAsync();
-            while(await r.ReadAsync())rows.Add(new(S(r,0),S(r,1),S(r,2),Convert.ToInt32(r.GetValue(3)),Convert.ToInt32(r.GetValue(4)),S(r,5)));
+            await using var r=await q.ExecuteReaderAsync(_cancellationToken);
+            while(await r.ReadAsync(_cancellationToken))rows.Add(new(S(r,0),S(r,1),S(r,2),Convert.ToInt32(r.GetValue(3)),Convert.ToInt32(r.GetValue(4)),S(r,5)));
 
             var defs=rows.GroupBy(x=>new{x.Schema,x.Table,x.Index,x.NonUnique})
                 .Select(g=>new{g.Key.Schema,g.Key.Table,g.Key.Index,g.Key.NonUnique,Cols=string.Join(",",g.OrderBy(x=>x.Seq).Select(x=>x.Column))}).ToList();
@@ -85,7 +90,7 @@ public sealed class MySqlAssessmentPackService
             result.Add(await UnusedIndexes(c));
             return result;
         }
-        catch(Exception ex){return new(){Error("MYSQL.INDEX.INVENTORY",AssessmentCategory.Indexes,"Index Inventory",ex)};}
+        catch(OperationCanceledException){throw;}catch(Exception ex){return new(){Error("MYSQL.INDEX.INVENTORY",AssessmentCategory.Indexes,"Index Inventory",ex)};}
     }
 
     private async Task<AssessmentCheck> UnusedIndexes(MySqlConnection c)
@@ -101,7 +106,7 @@ public sealed class MySqlAssessmentPackService
             status.TryGetValue("Created_tmp_tables",out var all);status.TryGetValue("Created_tmp_disk_tables",out var disk);
             var ratio=all>0?disk*100.0/all:0;
             return new(){new(){CheckId="MYSQL.TEMP.TABLES",Engine=DatabaseEngine.MySqlMariaDb,Category=AssessmentCategory.Temporary,Title="Temporary Tables",Status=ratio>=25?"WARNING":"OK",Severity=ratio>=25?3:0,Summary=$"{ratio:0.0}% temp tables created on disk",Evidence=$"Created_tmp_tables={all}; Created_tmp_disk_tables={disk}",WhyItMatters="A high disk-temp ratio can indicate queries exceeding in-memory temp limits or unsuitable access patterns.",RecommendedAction="Correlate with slow SQL before increasing temp limits; avoid tuning solely from a cumulative counter.",Verification="Compare the delta/rate during a representative workload period.",Capability="AVAILABLE",ReadOnly=true}};
-        }catch(Exception ex){return new(){Error("MYSQL.TEMP.TABLES",AssessmentCategory.Temporary,"Temporary Tables",ex)};}
+        }catch(OperationCanceledException){throw;}catch(Exception ex){return new(){Error("MYSQL.TEMP.TABLES",AssessmentCategory.Temporary,"Temporary Tables",ex)};}
     }
 
     private async Task<List<AssessmentCheck>> InnoDbChecks(MySqlConnection c)
@@ -114,7 +119,7 @@ public sealed class MySqlAssessmentPackService
             var dirtyPct=total>0?dirty*100.0/total:0;
             list.Add(new(){CheckId="MYSQL.INNODB.BUFFER",Engine=DatabaseEngine.MySqlMariaDb,Category=AssessmentCategory.Performance,Title="InnoDB Buffer Pool",Status=dirtyPct>=60?"WARNING":"OK",Severity=dirtyPct>=60?3:0,Summary=$"{dirtyPct:0.0}% dirty buffer pages",Evidence=$"total={total}; dirty={dirty}; free={free}",WhyItMatters="Buffer-pool pressure and dirty-page accumulation can increase checkpoint and storage pressure.",RecommendedAction="Correlate with write workload, flushing and I/O before changing InnoDB memory settings.",Verification="Compare status deltas during a representative workload window.",Capability="AVAILABLE",ReadOnly=true});
             list.Add(new(){CheckId="MYSQL.INNODB.DEADLOCKS",Engine=DatabaseEngine.MySqlMariaDb,Category=AssessmentCategory.Transactions,Title="InnoDB Deadlocks",Status="INFO",Severity=1,Summary=$"{deadlocks} deadlock(s) since status reset/startup",Evidence="Innodb_deadlocks is cumulative; use deltas before judging current severity.",WhyItMatters="Deadlocks indicate conflicting transactional access patterns.",RecommendedAction="Capture the deadlock graph/log evidence and identify the involved statements before changing isolation or indexes.",Verification="Monitor the delta after remediation.",Capability=s.ContainsKey("Innodb_deadlocks")?"AVAILABLE":"UNAVAILABLE",ReadOnly=true});
-        }catch(Exception ex){list.Add(Error("MYSQL.INNODB.STATUS",AssessmentCategory.Performance,"InnoDB Status Counters",ex));}
+        }catch(OperationCanceledException){throw;}catch(Exception ex){list.Add(Error("MYSQL.INNODB.STATUS",AssessmentCategory.Performance,"InnoDB Status Counters",ex));}
         return list;
     }
 
@@ -124,12 +129,12 @@ public sealed class MySqlAssessmentPackService
         {
             var sql=maria||major<8?"SHOW SLAVE STATUS":"SHOW REPLICA STATUS";
             await using var q=new MySqlCommand(sql,c){CommandTimeout=30};await using var r=await q.ExecuteReaderAsync();
-            if(!await r.ReadAsync())return Info("MYSQL.HA.REPLICATION",AssessmentCategory.HighAvailability,"Replication","Standalone / no replica status","No replication receiver status returned.");
+            if(!await r.ReadAsync(_cancellationToken))return Info("MYSQL.HA.REPLICATION",AssessmentCategory.HighAvailability,"Replication","Standalone / no replica status","No replication receiver status returned.");
             string Read(params string[] names){foreach(var n in names){try{var i=r.GetOrdinal(n);return r.IsDBNull(i)?"":Convert.ToString(r.GetValue(i))??"";}catch{}}return "";}
             var io=Read("Replica_IO_Running","Slave_IO_Running");var sqlRun=Read("Replica_SQL_Running","Slave_SQL_Running");
             var lag=Read("Seconds_Behind_Source","Seconds_Behind_Master");var ok=io.Equals("Yes",StringComparison.OrdinalIgnoreCase)&&sqlRun.Equals("Yes",StringComparison.OrdinalIgnoreCase);
             return new(){CheckId="MYSQL.HA.REPLICATION",Engine=DatabaseEngine.MySqlMariaDb,Category=AssessmentCategory.HighAvailability,Title="Replication",Status=ok?"OK":"WARNING",Severity=ok?0:3,Summary=$"IO={io} SQL={sqlRun}",Evidence=$"LagSeconds={lag} | command={sql}",WhyItMatters="Replication health directly affects resilience and recovery objectives.",RecommendedAction="Review receiver/applier errors and network/SQL lag before restarting or reconfiguring replication.",Verification="Confirm both threads are healthy and lag returns to an acceptable level.",Capability="AVAILABLE",ReadOnly=true};
-        }catch(Exception ex){return Error("MYSQL.HA.REPLICATION",AssessmentCategory.HighAvailability,"Replication",ex);}
+        }catch(OperationCanceledException){throw;}catch(Exception ex){return Error("MYSQL.HA.REPLICATION",AssessmentCategory.HighAvailability,"Replication",ex);}
     }
 
     private async Task<Dictionary<string,long>> StatusValues(MySqlConnection c,params string[] names)
@@ -171,11 +176,12 @@ public sealed class MySqlAssessmentPackService
         }
     }
 
-    private static async Task<string> Scalar(MySqlConnection c,string sql){await using var q=new MySqlCommand(sql,c);return Convert.ToString(await q.ExecuteScalarAsync())??"";}
-    private static async Task<AssessmentCheck> Q(MySqlConnection c,string id,AssessmentCategory cat,string title,string sql)
+    private async Task<string> Scalar(MySqlConnection c,string sql){_cancellationToken.ThrowIfCancellationRequested();await using var q=new MySqlCommand(sql,c);return Convert.ToString(await q.ExecuteScalarAsync(_cancellationToken))??"";}
+    private async Task<AssessmentCheck> Q(MySqlConnection c,string id,AssessmentCategory cat,string title,string sql)
     {
         var st=DateTime.Now;
-        try{await using var q=new MySqlCommand(sql,c){CommandTimeout=30};await using var r=await q.ExecuteReaderAsync();await r.ReadAsync();var status=S(r,0);return Make(id,cat,title,status,S(r,1),S(r,2),(long)(DateTime.Now-st).TotalMilliseconds);}
+        try{_cancellationToken.ThrowIfCancellationRequested();await using var q=new MySqlCommand(sql,c){CommandTimeout=30};await using var r=await q.ExecuteReaderAsync(_cancellationToken);await r.ReadAsync(_cancellationToken);var status=S(r,0);return Make(id,cat,title,status,S(r,1),S(r,2),(long)(DateTime.Now-st).TotalMilliseconds);}
+        catch(OperationCanceledException){throw;}
         catch(MySqlException ex) when(ex.Number is 1044 or 1045 or 1142 or 1227){return NoPermission(id,cat,title,ex.Message);}
         catch(MySqlException ex) when(ex.Number is 1054 or 1146 or 1305 or 1064){return Unsupported(id,cat,title,ex.Message);}
         catch(Exception ex){return Error(id,cat,title,ex);}
