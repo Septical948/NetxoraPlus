@@ -18,28 +18,40 @@ public sealed class PostgreSqlAssessmentPackService
         }.ConnectionString;
     }
 
-    public async Task<List<AssessmentCheck>> RunFullAsync()
+    public async Task<List<AssessmentCheck>> RunFullAsync(CancellationToken cancellationToken=default)
     {
         var x=new List<AssessmentCheck>();
-        await using var c=new NpgsqlConnection(cs);await c.OpenAsync();
+        await using var c=new NpgsqlConnection(cs);await c.OpenAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
         var v=c.PostgreSqlVersion;
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(Info("PG.PLATFORM.VERSION",AssessmentCategory.Platform,"PostgreSQL Version",$"PostgreSQL {v}",$"Database={c.Database} | User={p.Username}","Version-aware pack selection."));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"PG.CAPACITY.DATABASES",AssessmentCategory.Capacity,"Database Size",@"SELECT 'OK',COUNT(*)||' database(s)',COALESCE(string_agg(datname||'='||pg_size_pretty(pg_database_size(datname)), '; '),'') FROM pg_database WHERE datallowconn;"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"PG.CONFIG.CONNECTIONS",AssessmentCategory.Configuration,"Connection Capacity",@"SELECT CASE WHEN current_setting('max_connections')::int>0 AND count(*)*100/current_setting('max_connections')::int>=80 THEN 'WARNING' ELSE 'OK' END,count(*)||' / '||current_setting('max_connections')||' connections','active='||SUM(CASE WHEN state='active' THEN 1 ELSE 0 END)||', idle='||SUM(CASE WHEN state='idle' THEN 1 ELSE 0 END) FROM pg_stat_activity;"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"PG.TRAN.LONG",AssessmentCategory.Transactions,"Long Transactions",@"SELECT CASE WHEN COUNT(*)>0 THEN 'WARNING' ELSE 'OK' END,COUNT(*)||' transaction(s) > 30 min',COALESCE(string_agg('pid='||pid||' age='||(EXTRACT(EPOCH FROM(now()-xact_start))::bigint/60)||'m', '; '),'') FROM pg_stat_activity WHERE xact_start IS NOT NULL AND now()-xact_start>interval '30 minutes';"));
         if(v.Major>9 || (v.Major==9&&v.Minor>=2))
             x.Add(await Q(c,"PG.TRAN.IDLE",AssessmentCategory.Transactions,"Idle In Transaction",@"SELECT CASE WHEN COUNT(*)>0 THEN 'WARNING' ELSE 'OK' END,COUNT(*)||' idle-in-transaction session(s) > 15 min',COALESCE(string_agg('pid='||pid||' age='||(EXTRACT(EPOCH FROM(now()-xact_start))::bigint/60)||'m', '; '),'') FROM pg_stat_activity WHERE state LIKE 'idle in transaction%' AND xact_start IS NOT NULL AND now()-xact_start>interval '15 minutes';"));
         else
             x.Add(Unsupported("PG.TRAN.IDLE",AssessmentCategory.Transactions,"Idle In Transaction",$"pg_stat_activity.state is not available in the required form on PostgreSQL {v}."));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Blocking(c,v));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"PG.MAINT.XID",AssessmentCategory.Maintenance,"XID Age",@"SELECT CASE WHEN COALESCE(MAX(age(datfrozenxid)),0)>1500000000 THEN 'WARNING' ELSE 'OK' END,'max XID age='||COALESCE(MAX(age(datfrozenxid)),0),COALESCE(string_agg(datname||'='||age(datfrozenxid), '; '),'') FROM pg_database WHERE datallowconn;"));
         var vacuumSql=v.Major>9 || (v.Major==9&&v.Minor>=4)
             ? @"SELECT CASE WHEN COUNT(*) FILTER (WHERE COALESCE(last_autovacuum,last_vacuum) IS NULL)>0 THEN 'WARNING' ELSE 'OK' END,COUNT(*) FILTER (WHERE COALESCE(last_autovacuum,last_vacuum) IS NULL)||' table(s) without vacuum timestamp',COALESCE(string_agg(schemaname||'.'||relname||' dead='||n_dead_tup, '; '),'') FROM pg_stat_user_tables;"
             : @"SELECT CASE WHEN SUM(CASE WHEN COALESCE(last_autovacuum,last_vacuum) IS NULL THEN 1 ELSE 0 END)>0 THEN 'WARNING' ELSE 'OK' END,SUM(CASE WHEN COALESCE(last_autovacuum,last_vacuum) IS NULL THEN 1 ELSE 0 END)||' table(s) without vacuum timestamp',COALESCE(string_agg(schemaname||'.'||relname||' dead='||n_dead_tup, '; '),'') FROM pg_stat_user_tables;";
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"PG.MAINT.VACUUM",AssessmentCategory.Maintenance,"Vacuum / Analyze Recency",vacuumSql));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"PG.MAINT.DEAD",AssessmentCategory.Maintenance,"Dead Tuples",@"SELECT CASE WHEN COALESCE(MAX(CASE WHEN n_live_tup+n_dead_tup>0 THEN n_dead_tup*100.0/(n_live_tup+n_dead_tup) ELSE 0 END),0)>=20 THEN 'WARNING' ELSE 'OK' END,ROUND(COALESCE(MAX(CASE WHEN n_live_tup+n_dead_tup>0 THEN n_dead_tup*100.0/(n_live_tup+n_dead_tup) ELSE 0 END),0),1)||'% max dead tuple ratio',COALESCE(string_agg(schemaname||'.'||relname||'='||n_dead_tup, '; '),'') FROM pg_stat_user_tables;"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"PG.INDEX.UNUSED",AssessmentCategory.Indexes,"Unused Index Candidates",@"SELECT CASE WHEN COUNT(*)>0 THEN 'WARNING' ELSE 'OK' END,COUNT(*)||' unused non-unique index candidate(s)',COALESCE(string_agg(s.schemaname||'.'||s.relname||'.'||s.indexrelname, '; '),'') FROM pg_stat_user_indexes s JOIN pg_index i ON i.indexrelid=s.indexrelid WHERE s.idx_scan=0 AND NOT i.indisunique AND pg_relation_size(s.indexrelid)>10485760;"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"PG.INDEX.INVALID",AssessmentCategory.Indexes,"Invalid Indexes",@"SELECT CASE WHEN COUNT(*)>0 THEN 'WARNING' ELSE 'OK' END,COUNT(*)||' invalid index(es)',COALESCE(string_agg(n.nspname||'.'||ci.relname, '; '),'') FROM pg_index i JOIN pg_class ci ON ci.oid=i.indexrelid JOIN pg_namespace n ON n.oid=ci.relnamespace WHERE NOT i.indisvalid;"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"PG.PERF.SEQSCAN",AssessmentCategory.Performance,"Sequential Scan Candidates",@"SELECT CASE WHEN COUNT(*)>0 THEN 'WARNING' ELSE 'OK' END,COUNT(*)||' large table(s) dominated by sequential scans',COALESCE(string_agg(schemaname||'.'||relname||' seq='||seq_scan||' idx='||idx_scan, '; '),'') FROM pg_stat_user_tables WHERE pg_total_relation_size(relid)>1073741824 AND seq_scan>COALESCE(idx_scan,0)*4 AND seq_scan>100;"));
         if(v.Major>9 || (v.Major==9&&v.Minor>=4))
         {
@@ -52,11 +64,17 @@ public sealed class PostgreSqlAssessmentPackService
             x.Add(Unsupported("PG.HA.SLOTS",AssessmentCategory.HighAvailability,"Replication Slots",$"Replication slots are not available on this PostgreSQL version. Detected {v}."));
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Replication(c,v));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Checkpoints(c,v));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"PG.CONFIG.CORE",AssessmentCategory.Configuration,"Core Memory / WAL Settings",@"SELECT 'INFO','Core PostgreSQL settings','shared_buffers='||current_setting('shared_buffers')||'; work_mem='||current_setting('work_mem')||'; maintenance_work_mem='||current_setting('maintenance_work_mem')||'; max_connections='||current_setting('max_connections')||'; autovacuum='||current_setting('autovacuum');"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await PgStatStatements(c));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(Unavailable("PG.BACKUP.EVIDENCE",AssessmentCategory.Backup,"Backup Evidence","PostgreSQL does not expose a universal authoritative last-backup record. Integrate pgBackRest/Barman/filesystem evidence rather than infer recoverability."));
+        cancellationToken.ThrowIfCancellationRequested();
         return x;
     }
 
