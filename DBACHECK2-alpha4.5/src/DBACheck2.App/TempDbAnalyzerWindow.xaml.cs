@@ -15,5 +15,5 @@ public partial class TempDbAnalyzerWindow : Window
     private void FilesButton_Click(object sender,RoutedEventArgs e) { if(_snapshot!=null) DetailText.Text=SqlHealthService.BuildTempDbFiles(_snapshot); }
     private void VersionButton_Click(object sender,RoutedEventArgs e) { if(_snapshot!=null) DetailText.Text=SqlHealthService.BuildVersionStoreDetail(_snapshot); }
     private void EvidenceButton_Click(object sender,RoutedEventArgs e) { if(_snapshot==null)return; var t=SqlHealthService.BuildTempDbEvidence(_snapshot); DetailText.Text=t; Clipboard.SetText(t); AnalyzerStatus.Text=En?"TempDB Evidence Snapshot copied to clipboard.":"Evidence Snapshot TempDB copiado al portapapeles."; }
-    private void ExpandDetailButton_Click(object sender,RoutedEventArgs e)=>DetailPanelService.Toggle(DetailRow,ExpandDetailButton);
+    private void ExpandDetailButton_Click(object sender,RoutedEventArgs e)=>DetailPanelService.Toggle(ListRow,DetailRow,ExpandDetailButton,125,105);
 }
