@@ -10,13 +10,15 @@ public sealed class OracleAssessmentPackService
     private readonly ServerProfile p;
     public OracleAssessmentPackService(ServerProfile profile)=>p=profile;
 
-    public async Task<List<AssessmentCheck>> RunFullAsync()
+    public async Task<List<AssessmentCheck>> RunFullAsync(CancellationToken cancellationToken=default)
     {
-        if(p.OracleMode==OracleConnectionMode.Legacy)return await Task.Run(RunLegacy);
-        if(p.OracleMode==OracleConnectionMode.Modern)return await RunModernAsync();
+        cancellationToken.ThrowIfCancellationRequested();
+        if(p.OracleMode==OracleConnectionMode.Legacy)return await Task.Run(()=>RunLegacy(cancellationToken),cancellationToken);
+        if(p.OracleMode==OracleConnectionMode.Modern)return await RunModernAsync(cancellationToken);
 
-        try{return await RunModernAsync();}
-        catch{return await Task.Run(RunLegacy);}
+        try{return await RunModernAsync(cancellationToken);}
+        catch(OperationCanceledException){throw;}
+        catch{return await Task.Run(()=>RunLegacy(cancellationToken),cancellationToken);}
     }
 
     private string ModernCs()
@@ -34,57 +36,97 @@ public sealed class OracleAssessmentPackService
         return $"Provider=OraOLEDB.Oracle;Data Source={ds};User ID={p.Username};Password={p.Password};OLEDB.NET=True;";
     }
 
-    private async Task<List<AssessmentCheck>> RunModernAsync()
+    private async Task<List<AssessmentCheck>> RunModernAsync(CancellationToken cancellationToken)
     {
         var x=new List<AssessmentCheck>();
-        await using var c=new OracleConnection(ModernCs());await c.OpenAsync();
+        await using var c=new OracleConnection(ModernCs());await c.OpenAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
         var banner=await Scalar(c,"select banner from v$version where rownum=1");
         var major=Major(banner);
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(Info("ORA.PLATFORM.VERSION",AssessmentCategory.Platform,"Oracle Version",banner,$"Provider=Modern ODP.NET | Major={major}"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"ORA.CONFIG.RESOURCES",AssessmentCategory.Configuration,"Sessions / Processes Capacity",@"select 'INFO','Sessions / processes resource limits',max(resource_name||'='||current_utilization||'/'||limit_value) from v$resource_limit where resource_name in ('sessions','processes')"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"ORA.TRAN.OPEN",AssessmentCategory.Transactions,"Open Transactions",@"select case when count(*)>0 then 'INFO' else 'OK' end,count(*)||' open transaction(s)',nvl(max('SID='||s.sid||' START='||t.start_time),'') from v$transaction t,v$session s where s.taddr=t.addr"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"ORA.PERF.BLOCKING",AssessmentCategory.Performance,"Blocking Chains",@"select case when count(*)>0 then 'WARNING' else 'OK' end,count(*)||' blocked session(s)',nvl(max('SID '||s.sid||' waits for SID '||b.sid),'') from v$lock l1,v$lock l2,v$session s,v$session b where l1.request>0 and l2.lmode>0 and l1.id1=l2.id1 and l1.id2=l2.id2 and s.sid=l1.sid and b.sid=l2.sid"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"ORA.CAPACITY.TABLESPACE",AssessmentCategory.Capacity,"Tablespace Usage",@"select case when max(pct)>=90 then 'CRITICAL' when max(pct)>=80 then 'WARNING' else 'OK' end,round(max(pct),1)||'% max used',max(tablespace_name||'='||round(pct,1)||'%') from (select df.tablespace_name,100*(1-nvl(fs.free_mb,0)/df.total_mb) pct from (select tablespace_name,sum(bytes)/1024/1024 total_mb from dba_data_files group by tablespace_name) df,(select tablespace_name,sum(bytes)/1024/1024 free_mb from dba_free_space group by tablespace_name) fs where fs.tablespace_name(+)=df.tablespace_name)"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"ORA.TEMP.CAPACITY",AssessmentCategory.Temporary,"TEMP Capacity",@"select case when sum(bytes)/1024/1024/1024>=100 then 'INFO' else 'OK' end,round(sum(bytes)/1024/1024,1)||' MB TEMP allocated',nvl(max(tablespace_name),'') from dba_temp_files"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"ORA.LOG.ARCHIVE",AssessmentCategory.Logs,"Archive Log Mode",@"select case when log_mode='ARCHIVELOG' then 'OK' else 'WARNING' end,'Log mode: '||log_mode,'Open mode: '||open_mode from v$database"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"ORA.LOG.REDO",AssessmentCategory.Logs,"Redo Configuration",@"select 'INFO',count(*)||' redo log group(s)',to_char(round(sum(bytes)/1024/1024,1))||' MB allocated' from v$log"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"ORA.LOG.SWITCHES",AssessmentCategory.Logs,"Redo Switch Frequency",@"select case when count(*)>100 then 'WARNING' else 'OK' end,count(*)||' log switch(es) in last 24h',nvl(to_char(max(first_time),'YYYY-MM-DD HH24:MI:SS'),'') from v$log_history where first_time>=sysdate-1"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.AddRange(await OracleIndexChecksModern(c));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"ORA.OBJECT.INVALID",AssessmentCategory.Maintenance,"Invalid Objects",@"select case when count(*)>0 then 'WARNING' else 'OK' end,count(*)||' invalid object(s)',nvl(max(owner||'.'||object_name||' '||object_type),'') from dba_objects where status='INVALID'"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await StatsModern(c,major));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await JobsModern(c,major));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(await Q(c,"ORA.CONFIG.CORE",AssessmentCategory.Configuration,"Core Memory / Optimizer Settings",@"select 'INFO','Core Oracle settings',max(case when name='sga_target' then 'sga_target='||value end)||'; '||max(case when name='pga_aggregate_target' then 'pga_aggregate_target='||value end)||'; '||max(case when name='optimizer_mode' then 'optimizer_mode='||value end) from v$parameter where name in ('sga_target','pga_aggregate_target','optimizer_mode')"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(major>=9?await Q(c,"ORA.HA.ROLE",AssessmentCategory.HighAvailability,"Database Role",@"select 'INFO','Database role: '||database_role,'Open mode: '||open_mode from v$database"):Unsupported("ORA.HA.ROLE",AssessmentCategory.HighAvailability,"Database Role","DATABASE_ROLE assessment is not enabled for Oracle 8i legacy capability."));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(major>=10?await Q(c,"ORA.CAPACITY.FRA",AssessmentCategory.Capacity,"Fast Recovery Area",@"select case when space_limit>0 and space_used*100/space_limit>=85 then 'WARNING' else 'OK' end,round(case when space_limit>0 then space_used*100/space_limit else 0 end,1)||'% FRA used','used='||round(space_used/1024/1024)||'MB limit='||round(space_limit/1024/1024)||'MB' from v$recovery_file_dest"):Unsupported("ORA.CAPACITY.FRA",AssessmentCategory.Capacity,"Fast Recovery Area","FRA was introduced after Oracle 9i; not applicable to this legacy release."));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(major>=9?await Q(c,"ORA.BACKUP.RMAN",AssessmentCategory.Backup,"RMAN Backup Evidence",@"select case when max(completion_time) is null then 'WARNING' when max(completion_time)<sysdate-2 then 'WARNING' else 'OK' end,'Last RMAN backup: '||nvl(to_char(max(completion_time),'YYYY-MM-DD HH24:MI:SS'),'none'),'v$backup_set evidence' from v$backup_set"):Unavailable("ORA.BACKUP.RMAN",AssessmentCategory.Backup,"RMAN Backup Evidence","Oracle 8i backup evidence requires legacy RMAN/catalog integration; no universal authoritative query is assumed."));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(major>=9?await Q(c,"ORA.UNDO.MODE",AssessmentCategory.Temporary,"UNDO Management",@"select case when value='AUTO' then 'OK' else 'INFO' end,'UNDO management: '||value,'undo_management parameter' from v$parameter where name='undo_management'"):Unavailable("ORA.UNDO.MODE",AssessmentCategory.Temporary,"UNDO / Rollback Segments","Oracle 8i uses rollback segments rather than automatic UNDO management."));
+        cancellationToken.ThrowIfCancellationRequested();
         return x;
     }
 
-    private List<AssessmentCheck> RunLegacy()
+    private List<AssessmentCheck> RunLegacy(CancellationToken cancellationToken)
     {
         var x=new List<AssessmentCheck>();
+        cancellationToken.ThrowIfCancellationRequested();
         using var c=new OleDbConnection(LegacyCs());
         try{c.Open();}catch(Exception ex){throw new InvalidOperationException("Oracle Legacy assessment requires a working OraOLEDB.Oracle client with matching process architecture.",ex);}
         var banner=Scalar(c,"select banner from v$version where rownum=1");var major=Major(banner);
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(Info("ORA.PLATFORM.VERSION",AssessmentCategory.Platform,"Oracle Version",banner,$"Provider=OraOLEDB Legacy | Major={major}"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(Q(c,"ORA.CONFIG.RESOURCES",AssessmentCategory.Configuration,"Sessions / Processes Capacity","select decode(sign(max(pct)-79),1,'WARNING','OK'),to_char(round(max(pct),1))||'% max resource utilization',max(resource_name||'='||to_char(current_utilization)||'/'||limit_value) from (select resource_name,current_utilization,limit_value,decode(translate(limit_value,'0123456789',''),' ',decode(to_number(limit_value),0,0,current_utilization*100/to_number(limit_value)),0) pct from v$resource_limit where resource_name in ('sessions','processes'))"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(Q(c,"ORA.TRAN.OPEN",AssessmentCategory.Transactions,"Open Transactions","select 'INFO',to_char(count(*))||' open transaction(s)',nvl(max('SID='||to_char(s.sid)||' START='||t.start_time),'') from v$transaction t,v$session s where s.taddr=t.addr"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(Q(c,"ORA.PERF.BLOCKING",AssessmentCategory.Performance,"Blocking Chains","select decode(count(*),0,'OK','WARNING'),to_char(count(*))||' blocked session(s)',nvl(max('SID '||to_char(s.sid)||' waits for SID '||to_char(b.sid)),'') from v$lock l1,v$lock l2,v$session s,v$session b where l1.request>0 and l2.lmode>0 and l1.id1=l2.id1 and l1.id2=l2.id2 and s.sid=l1.sid and b.sid=l2.sid"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(Q(c,"ORA.CAPACITY.TABLESPACE",AssessmentCategory.Capacity,"Tablespace Usage","select decode(sign(max(pct)-89),1,'CRITICAL',decode(sign(max(pct)-79),1,'WARNING','OK')),to_char(round(max(pct),1))||'% max used',max(tablespace_name||'='||to_char(round(pct,1))||'%') from (select df.tablespace_name,100*(1-nvl(fs.free_mb,0)/df.total_mb) pct from (select tablespace_name,sum(bytes)/1024/1024 total_mb from dba_data_files group by tablespace_name) df,(select tablespace_name,sum(bytes)/1024/1024 free_mb from dba_free_space group by tablespace_name) fs where fs.tablespace_name(+)=df.tablespace_name)"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(Q(c,"ORA.TEMP.CAPACITY",AssessmentCategory.Temporary,"TEMP Capacity","select 'INFO',to_char(round(sum(bytes)/1024/1024,1))||' MB TEMP allocated',nvl(max(tablespace_name),'') from dba_temp_files"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(Q(c,"ORA.LOG.ARCHIVE",AssessmentCategory.Logs,"Archive Log Mode","select decode(log_mode,'ARCHIVELOG','OK','WARNING'),'Log mode: '||log_mode,'Legacy Oracle' from v$database"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(Q(c,"ORA.LOG.REDO",AssessmentCategory.Logs,"Redo Configuration","select 'INFO',to_char(count(*))||' redo log group(s)',to_char(round(sum(bytes)/1024/1024,1))||' MB allocated' from v$log"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(Q(c,"ORA.LOG.SWITCHES",AssessmentCategory.Logs,"Redo Switch Frequency","select decode(sign(count(*)-100),1,'WARNING','OK'),to_char(count(*))||' log switch(es) in last 24h',nvl(to_char(max(first_time),'YYYY-MM-DD HH24:MI:SS'),'') from v$log_history where first_time>=sysdate-1"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.AddRange(OracleIndexChecksLegacy(c));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(Q(c,"ORA.OBJECT.INVALID",AssessmentCategory.Maintenance,"Invalid Objects","select decode(count(*),0,'OK','WARNING'),to_char(count(*))||' invalid object(s)',nvl(max(owner||'.'||object_name||' '||object_type),'') from dba_objects where status='INVALID'"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(StatsLegacy(c,major));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(JobsLegacy(c,major));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(Q(c,"ORA.CONFIG.LEGACY",AssessmentCategory.Configuration,"Core Legacy Settings","select 'INFO','Core Oracle settings',max(decode(name,'optimizer_mode','optimizer_mode='||value,null))||'; '||max(decode(name,'shared_pool_size','shared_pool_size='||value,null))||'; '||max(decode(name,'db_block_buffers','db_block_buffers='||value,null)) from v$parameter where name in ('optimizer_mode','shared_pool_size','db_block_buffers')"));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(major>=9?Q(c,"ORA.HA.ROLE",AssessmentCategory.HighAvailability,"Database Role","select 'INFO','Database role: '||database_role,'Legacy role evidence' from v$database"):Unsupported("ORA.HA.ROLE",AssessmentCategory.HighAvailability,"Database Role","Oracle 8i does not expose the same Data Guard role model used by later releases."));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(major>=10?Q(c,"ORA.CAPACITY.FRA",AssessmentCategory.Capacity,"Fast Recovery Area","select decode(sign(case when space_limit>0 then space_used*100/space_limit else 0 end-84),1,'WARNING','OK'),to_char(round(case when space_limit>0 then space_used*100/space_limit else 0 end,1))||'% FRA used','FRA' from v$recovery_file_dest"):Unsupported("ORA.CAPACITY.FRA",AssessmentCategory.Capacity,"Fast Recovery Area","FRA is not available on this Oracle release."));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(major>=9?Q(c,"ORA.BACKUP.RMAN",AssessmentCategory.Backup,"RMAN Backup Evidence","select decode(max(completion_time),null,'WARNING',decode(sign(sysdate-max(completion_time)-2),1,'WARNING','OK')),'Last RMAN backup: '||nvl(to_char(max(completion_time),'YYYY-MM-DD HH24:MI:SS'),'none'),'v$backup_set evidence' from v$backup_set"):Unavailable("ORA.BACKUP.RMAN",AssessmentCategory.Backup,"RMAN Backup Evidence","Oracle 8i backup evidence requires legacy RMAN/catalog integration."));
+        cancellationToken.ThrowIfCancellationRequested();
         x.Add(major>=9?Q(c,"ORA.UNDO.MODE",AssessmentCategory.Temporary,"UNDO Management","select decode(value,'AUTO','OK','INFO'),'UNDO management: '||value,'undo_management parameter' from v$parameter where name='undo_management'"):Unavailable("ORA.UNDO.MODE",AssessmentCategory.Temporary,"UNDO / Rollback Segments","Oracle 8i uses rollback segments rather than automatic UNDO management."));
+        cancellationToken.ThrowIfCancellationRequested();
         return x;
     }
 
