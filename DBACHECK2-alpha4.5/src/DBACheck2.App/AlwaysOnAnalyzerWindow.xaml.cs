@@ -89,5 +89,5 @@ public partial class AlwaysOnAnalyzerWindow : Window
         Clipboard.SetText(snapshot);
         AnalyzerStatus.Text=En?"Evidence Snapshot captured and copied to clipboard.":"Evidence Snapshot capturado y copiado al portapapeles.";
     }
-    private void ExpandDetailButton_Click(object sender,RoutedEventArgs e)=>DetailPanelService.Toggle(DetailRow,ExpandDetailButton);
+    private void ExpandDetailButton_Click(object sender,RoutedEventArgs e)=>DetailPanelService.Toggle(ListRow,DetailRow,ExpandDetailButton,125,105);
 }
