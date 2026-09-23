@@ -14,24 +14,40 @@ public sealed class AssessmentService
         List<AssessmentCheck> checks;
         string packVersion;
 
-        if(profile.Engine==DatabaseEngine.SqlServer && mode==AssessmentMode.Full)
+        if(mode==AssessmentMode.Full)
         {
-            // FULL on SQL Server is the original DBAHEALTCHECK pack, not a repeated Quick Check.
-            // Script, Script Index and Script-TSQL are embedded verbatim; duplicate filenames are executed once.
-            checks=await new LegacySqlHealthCheckService(profile).RunFullAsync();
-            packVersion="DBAHEALTCHECK SQL Pack 1";
+            switch(profile.Engine)
+            {
+                case DatabaseEngine.SqlServer:
+                    // FULL on SQL Server executes the original DBAHEALTCHECK SQL packs.
+                    checks=await new LegacySqlHealthCheckService(profile).RunFullAsync();
+                    packVersion="DBAHEALTCHECK SQL Pack 1";
+                    break;
+                case DatabaseEngine.PostgreSql:
+                    checks=await new PostgreSqlAssessmentPackService(profile).RunFullAsync();
+                    packVersion="PostgreSQL Full Pack 1";
+                    break;
+                case DatabaseEngine.Oracle:
+                    checks=await new OracleAssessmentPackService(profile).RunFullAsync();
+                    packVersion="Oracle Full Pack 1";
+                    break;
+                case DatabaseEngine.MySqlMariaDb:
+                    checks=await new MySqlAssessmentPackService(profile).RunFullAsync();
+                    packVersion="MySQL/MariaDB Full Pack 1";
+                    break;
+                default:
+                    throw new NotSupportedException($"Full Assessment is not available for {profile.Engine}.");
+            }
         }
         else
         {
             var sw=Stopwatch.StartNew();
             var health=await provider.QuickCheckAsync();
             sw.Stop();
-            checks=health.Select((x,i)=>FromHealth(profile.Engine,x,i,sw.ElapsedMilliseconds)).ToList();
-
-            if(mode==AssessmentMode.Quick)
-                checks=checks.Where(x=>x.Status!="OK" || x.Category is AssessmentCategory.Platform or AssessmentCategory.HighAvailability).ToList();
-
-            packVersion=profile.Engine==DatabaseEngine.SqlServer?"Core Quick Baseline 1":$"{profile.Engine} Baseline Pack 1";
+            checks=health.Select((x,i)=>FromHealth(profile.Engine,x,i,sw.ElapsedMilliseconds)).ToList()
+                .Where(x=>x.Status!="OK" || x.Category is AssessmentCategory.Platform or AssessmentCategory.HighAvailability)
+                .ToList();
+            packVersion="Core Quick Baseline 1";
         }
 
         return new AssessmentRun {
