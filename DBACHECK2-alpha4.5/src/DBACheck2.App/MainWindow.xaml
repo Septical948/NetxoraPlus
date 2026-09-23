@@ -24,6 +24,13 @@
         <Style x:Key="CloseWindowButton" TargetType="Button" BasedOn="{StaticResource WindowButton}">
             <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#C42B1C"/><Setter Property="Foreground" Value="White"/></Trigger></Style.Triggers>
         </Style>
+        <Style x:Key="TopUtilityButton" TargetType="Button">
+            <Setter Property="Height" Value="34"/><Setter Property="MinWidth" Value="38"/><Setter Property="Padding" Value="8,0"/>
+            <Setter Property="Margin" Value="0,0,4,0"/><Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#D9E1EE"/>
+            <Setter Property="BorderBrush" Value="#2A335A"/><Setter Property="BorderThickness" Value="1"/><Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="shell:WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#20283B"/><Setter Property="Foreground" Value="#38E8D0"/></Trigger></Style.Triggers>
+        </Style>
         <Style x:Key="SectionExpander" TargetType="Expander">
             <Setter Property="Foreground" Value="#8F9BB3"/><Setter Property="FontSize" Value="10"/><Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Margin" Value="0,5,0,3"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -64,8 +71,11 @@
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <TextBlock x:Name="LanguageLabelText" Text="IDIOMA" Foreground="#8291A8" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                    <ComboBox x:Name="LanguageBox" Width="90" Height="30" SelectionChanged="LanguageBox_SelectionChanged">
+                    <Button x:Name="UpdateButton" Style="{StaticResource TopUtilityButton}" Content="↻ NOT CHECKED" ToolTip="Check for updates" Click="UpdateButton_Click"/>
+                    <Button x:Name="SupportButton" Style="{StaticResource TopUtilityButton}" Content="🎧" ToolTip="Support" Click="SupportButton_Click"/>
+                    <Button x:Name="SettingsButton" Style="{StaticResource TopUtilityButton}" Content="⚙" ToolTip="Settings" Click="SettingsButton_Click"/>
+                    <TextBlock x:Name="LanguageLabelText" Visibility="Collapsed"/>
+                    <ComboBox x:Name="LanguageBox" Visibility="Collapsed" SelectionChanged="LanguageBox_SelectionChanged">
                         <ComboBoxItem Content="Español" Tag="es"/><ComboBoxItem Content="English" Tag="en"/>
                     </ComboBox>
                 </StackPanel>
