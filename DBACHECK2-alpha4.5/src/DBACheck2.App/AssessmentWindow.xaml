@@ -16,7 +16,7 @@
     <Grid.RowDefinitions>
      <RowDefinition Height="Auto"/>
      <RowDefinition Height="Auto"/>
-     <RowDefinition Height="*" MinHeight="220"/>
+     <RowDefinition x:Name="ChecksRow" Height="*" MinHeight="140"/>
      <RowDefinition Height="Auto"/>
      <RowDefinition x:Name="DetailRow" Height="125"/>
     </Grid.RowDefinitions>
