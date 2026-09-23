@@ -101,6 +101,12 @@
                             <Button x:Name="AssistantButton" Style="{StaticResource NavButton}" Content="Connections / Profiles" Click="AssistantButton_Click"/>
                             <Button x:Name="QuickButton" Style="{StaticResource NavButton}" Content="Quick Check" Click="QuickButton_Click"/>
 
+                            <Expander x:Name="AssessmentExpander" Style="{StaticResource SectionExpander}" Header="ASSESSMENT" IsExpanded="False" Expanded="NavExpander_Expanded">
+                                <StackPanel>
+                                    <Button x:Name="AssessmentButton" Style="{StaticResource NavButton}" Content="Health Assessment" Click="AssessmentButton_Click"/>
+                                </StackPanel>
+                            </Expander>
+
                             <Expander x:Name="DiagnosticsExpander" Style="{StaticResource SectionExpander}" Header="DIAGNOSTICS" IsExpanded="False" Expanded="NavExpander_Expanded">
                                 <StackPanel>
                                     <Button x:Name="IncidentButton" Style="{StaticResource NavButton}" Content="Long Transactions" Click="IncidentButton_Click"/>
@@ -110,12 +116,6 @@
                                     <Button x:Name="BackupJobsButton" Style="{StaticResource NavButton}" Content="Backups / Jobs" Click="BackupJobsButton_Click"/>
                                     <Button x:Name="AlwaysOnButton" Style="{StaticResource NavButton}" Content="AlwaysOn / HA" Click="AlwaysOnButton_Click"/>
                                     <Button x:Name="PerformanceButton" Style="{StaticResource NavButton}" Content="Performance" Click="PerformanceButton_Click"/>
-                                </StackPanel>
-                            </Expander>
-
-                            <Expander x:Name="AssessmentExpander" Style="{StaticResource SectionExpander}" Header="ASSESSMENT" IsExpanded="False" Expanded="NavExpander_Expanded">
-                                <StackPanel>
-                                    <Button x:Name="AssessmentButton" Style="{StaticResource NavButton}" Content="Health Assessment" Click="AssessmentButton_Click"/>
                                 </StackPanel>
                             </Expander>
 
