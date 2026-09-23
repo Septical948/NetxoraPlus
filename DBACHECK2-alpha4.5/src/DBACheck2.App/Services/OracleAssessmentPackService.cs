@@ -112,10 +112,10 @@ public sealed class OracleAssessmentPackService
     {
         var defs=rows.GroupBy(x=>new{x.Owner,x.Table,x.Index,x.Status}).Select(g=>new{g.Key.Owner,g.Key.Table,g.Key.Index,g.Key.Status,Cols=string.Join(",",g.OrderBy(x=>x.Pos).Select(x=>x.Col))}).ToList();
         var unusable=defs.Where(x=>x.Status.Equals("UNUSABLE",StringComparison.OrdinalIgnoreCase)).ToList();
-        var dups=defs.GroupBy(x=>new{x.Owner,x.Table,x.Cols},StringComparerAdapter.Instance).Where(g=>g.Count()>1).ToList();
+        var dups=defs.GroupBy(x=>$"{x.Owner}|{x.Table}|{x.Cols}",StringComparer.OrdinalIgnoreCase).Where(g=>g.Count()>1).ToList();
         return new(){
             new(){CheckId="ORA.INDEX.UNUSABLE",Engine=DatabaseEngine.Oracle,Category=AssessmentCategory.Indexes,Title="Unusable Indexes",Status=unusable.Count>0?"WARNING":"OK",Severity=unusable.Count>0?3:0,Summary=$"{unusable.Count} unusable index(es)",Evidence=string.Join("; ",unusable.Take(100).Select(x=>$"{x.Owner}.{x.Table}.{x.Index}")),WhyItMatters="Unusable indexes can break expected access paths or DML depending on context.",RecommendedAction="Validate why the index became unusable and rebuild only when operationally appropriate.",Verification="Confirm STATUS is VALID after remediation.",Capability="AVAILABLE",ReadOnly=true},
-            new(){CheckId="ORA.INDEX.DUPLICATE",Engine=DatabaseEngine.Oracle,Category=AssessmentCategory.Indexes,Title="Duplicate Index Definitions",Status=dups.Count>0?"WARNING":"OK",Severity=dups.Count>0?3:0,Summary=$"{dups.Count} duplicate index definition group(s)",Evidence=string.Join("; ",dups.Take(100).Select(g=>$"{g.Key.Owner}.{g.Key.Table} ({g.Key.Cols}) => {string.Join(",",g.Select(x=>x.Index))}")),WhyItMatters="Equivalent index definitions can add storage and DML maintenance cost.",RecommendedAction="Review uniqueness, constraints and workload before dropping or consolidating any index.",Verification="Re-run the assessment and confirm only intended definitions remain.",Capability="AVAILABLE",ReadOnly=true}
+            new(){CheckId="ORA.INDEX.DUPLICATE",Engine=DatabaseEngine.Oracle,Category=AssessmentCategory.Indexes,Title="Duplicate Index Definitions",Status=dups.Count>0?"WARNING":"OK",Severity=dups.Count>0?3:0,Summary=$"{dups.Count} duplicate index definition group(s)",Evidence=string.Join("; ",dups.Take(100).Select(g=>{var first=g.First();return $"{first.Owner}.{first.Table} ({first.Cols}) => {string.Join(",",g.Select(x=>x.Index))}";})),WhyItMatters="Equivalent index definitions can add storage and DML maintenance cost.",RecommendedAction="Review uniqueness, constraints and workload before dropping or consolidating any index.",Verification="Re-run the assessment and confirm only intended definitions remain.",Capability="AVAILABLE",ReadOnly=true}
         };
     }
 
@@ -160,10 +160,4 @@ public sealed class OracleAssessmentPackService
     private static string Why(AssessmentCategory c)=>c switch{AssessmentCategory.Indexes=>"Index validity and redundant definitions affect access paths, storage and DML cost.",AssessmentCategory.Capacity=>"Tablespace/FRA pressure can interrupt allocations and recovery operations.",AssessmentCategory.Logs=>"Redo/archive health affects recoverability and standby transport.",AssessmentCategory.Maintenance=>"Statistics, jobs and object validity affect optimizer behavior and scheduled operations.",AssessmentCategory.HighAvailability=>"Database role and transport capability define resilience.",AssessmentCategory.Transactions=>"Open transactions can retain locks and UNDO.",_=>"This check contributes to the Oracle operational baseline."};
     private static string Action(AssessmentCategory c,string status)=>status=="OK"?"No immediate action. Keep as baseline evidence.":c switch{AssessmentCategory.Indexes=>"Validate constraints and workload before rebuilding or removing indexes.",AssessmentCategory.Capacity=>"Review growth, autoextend and filesystem/ASM capacity before resizing.",AssessmentCategory.Logs=>"Review archive destination, redo sizing and Data Guard implications before changing configuration.",AssessmentCategory.Transactions=>"Identify session owner/application before interrupting work.",_=>"Review the evidence with the corresponding DBACHECK diagnostic module."};
 
-    private sealed class StringComparerAdapter : IEqualityComparer<dynamic>
-    {
-        public static readonly StringComparerAdapter Instance=new();
-        public new bool Equals(dynamic? a,dynamic? b)=>a?.Owner==b?.Owner&&a?.Table==b?.Table&&a?.Cols==b?.Cols;
-        public int GetHashCode(dynamic obj)=>HashCode.Combine((string)obj.Owner,(string)obj.Table,(string)obj.Cols);
-    }
 }
