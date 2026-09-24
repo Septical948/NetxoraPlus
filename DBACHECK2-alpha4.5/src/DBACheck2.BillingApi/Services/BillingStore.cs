@@ -31,6 +31,7 @@ public sealed class BillingStore
  state INTEGER NOT NULL,
  cycle INTEGER NOT NULL,
  period_end TEXT NULL,
+ access_until TEXT NULL,
  customer_ref TEXT NOT NULL DEFAULT '',
  subscription_ref TEXT NOT NULL DEFAULT '',
  checkout_ref TEXT NOT NULL DEFAULT '',
@@ -62,6 +63,7 @@ CREATE TABLE IF NOT EXISTS installation_credentials(
 );";
         cmd.ExecuteNonQuery();
 
+        EnsureColumn(cn,"subscriptions","access_until","TEXT NULL");
         EnsureColumn(cn,"subscriptions","cancel_at_period_end","INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(cn,"subscriptions","price_ref","TEXT NOT NULL DEFAULT ''");
     }
@@ -84,7 +86,7 @@ CREATE TABLE IF NOT EXISTS installation_credentials(
     {
         await using var cn=Open();await cn.OpenAsync();
         await using var cmd=cn.CreateCommand();
-        cmd.CommandText=@"SELECT installation_id,plan,state,cycle,period_end,customer_ref,subscription_ref,checkout_ref,cancel_at_period_end,price_ref,updated_at
+        cmd.CommandText=@"SELECT installation_id,plan,state,cycle,period_end,access_until,customer_ref,subscription_ref,checkout_ref,cancel_at_period_end,price_ref,updated_at
 FROM subscriptions WHERE installation_id=$id;";
         cmd.Parameters.AddWithValue("$id",installationId);
         await using var r=await cmd.ExecuteReaderAsync();
@@ -97,7 +99,7 @@ FROM subscriptions WHERE installation_id=$id;";
         if(string.IsNullOrWhiteSpace(subscriptionReference))return null;
         await using var cn=Open();await cn.OpenAsync();
         await using var cmd=cn.CreateCommand();
-        cmd.CommandText=@"SELECT installation_id,plan,state,cycle,period_end,customer_ref,subscription_ref,checkout_ref,cancel_at_period_end,price_ref,updated_at
+        cmd.CommandText=@"SELECT installation_id,plan,state,cycle,period_end,access_until,customer_ref,subscription_ref,checkout_ref,cancel_at_period_end,price_ref,updated_at
 FROM subscriptions WHERE subscription_ref=$id LIMIT 1;";
         cmd.Parameters.AddWithValue("$id",subscriptionReference);
         await using var r=await cmd.ExecuteReaderAsync();
@@ -110,10 +112,10 @@ FROM subscriptions WHERE subscription_ref=$id LIMIT 1;";
         await using var cn=Open();await cn.OpenAsync();
         await using var cmd=cn.CreateCommand();
         cmd.CommandText=@"INSERT INTO subscriptions
-(installation_id,plan,state,cycle,period_end,customer_ref,subscription_ref,checkout_ref,cancel_at_period_end,price_ref,updated_at)
-VALUES($id,$plan,$state,$cycle,$end,$customer,$subscription,$checkout,$cancel,$price,$updated)
+(installation_id,plan,state,cycle,period_end,access_until,customer_ref,subscription_ref,checkout_ref,cancel_at_period_end,price_ref,updated_at)
+VALUES($id,$plan,$state,$cycle,$end,$access,$customer,$subscription,$checkout,$cancel,$price,$updated)
 ON CONFLICT(installation_id) DO UPDATE SET
- plan=excluded.plan,state=excluded.state,cycle=excluded.cycle,period_end=excluded.period_end,
+ plan=excluded.plan,state=excluded.state,cycle=excluded.cycle,period_end=excluded.period_end,access_until=excluded.access_until,
  customer_ref=excluded.customer_ref,subscription_ref=excluded.subscription_ref,
  checkout_ref=excluded.checkout_ref,cancel_at_period_end=excluded.cancel_at_period_end,
  price_ref=excluded.price_ref,updated_at=excluded.updated_at;";
@@ -122,6 +124,7 @@ ON CONFLICT(installation_id) DO UPDATE SET
         cmd.Parameters.AddWithValue("$state",(int)value.State);
         cmd.Parameters.AddWithValue("$cycle",(int)value.Cycle);
         cmd.Parameters.AddWithValue("$end",(object?)value.CurrentPeriodEnd?.ToString("O")??DBNull.Value);
+        cmd.Parameters.AddWithValue("$access",(object?)value.AccessUntil?.ToString("O")??DBNull.Value);
         cmd.Parameters.AddWithValue("$customer",value.CustomerReference??"");
         cmd.Parameters.AddWithValue("$subscription",value.SubscriptionReference??"");
         cmd.Parameters.AddWithValue("$checkout",value.CheckoutSessionReference??"");
@@ -206,12 +209,13 @@ ON CONFLICT(event_id) DO UPDATE SET event_type=excluded.event_type,state='PROCES
         State=(SubscriptionState)r.GetInt32(2),
         Cycle=(BillingCycle)r.GetInt32(3),
         CurrentPeriodEnd=r.IsDBNull(4)?null:DateTime.TryParse(r.GetString(4),out var end)?end:null,
-        CustomerReference=r.GetString(5),
-        SubscriptionReference=r.GetString(6),
-        CheckoutSessionReference=r.GetString(7),
-        CancelAtPeriodEnd=!r.IsDBNull(8) && r.GetInt32(8)!=0,
-        PriceReference=r.IsDBNull(9)?"":r.GetString(9),
-        LastValidatedAt=DateTime.TryParse(r.GetString(10),out var updated)?updated:DateTime.MinValue,
+        AccessUntil=r.IsDBNull(5)?null:DateTime.TryParse(r.GetString(5),out var access)?access:null,
+        CustomerReference=r.GetString(6),
+        SubscriptionReference=r.GetString(7),
+        CheckoutSessionReference=r.GetString(8),
+        CancelAtPeriodEnd=!r.IsDBNull(9) && r.GetInt32(9)!=0,
+        PriceReference=r.IsDBNull(10)?"":r.GetString(10),
+        LastValidatedAt=DateTime.TryParse(r.GetString(11),out var updated)?updated:DateTime.MinValue,
         DevelopmentLicense=false
     };
 }
