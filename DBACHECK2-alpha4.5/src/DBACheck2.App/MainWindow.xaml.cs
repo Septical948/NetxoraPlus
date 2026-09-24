@@ -44,6 +44,7 @@ public partial class MainWindow : Window
             UiLocalizationService.Apply(ModuleHost);
         };
         window.SubscriptionRequested+=()=>HostAnalyzer(new SubscriptionWindow());
+        window.EnterpriseRequested+=()=>HostAnalyzer(new EnterpriseWindow());
         HostAnalyzer(window);
     }
 
