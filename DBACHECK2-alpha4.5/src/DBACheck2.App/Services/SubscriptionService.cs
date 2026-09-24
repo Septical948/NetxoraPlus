@@ -112,7 +112,19 @@ public sealed class SubscriptionService
     }
 
     public bool HasEntitlement(SubscriptionSnapshot snapshot,ProductEntitlement entitlement)
-        =>snapshot.DevelopmentLicense || (snapshot.State is SubscriptionState.Active or SubscriptionState.Trial) && PlanCatalog.Includes(snapshot.Plan,entitlement);
+    {
+        if(snapshot.DevelopmentLicense)return true;
+
+        var graceDays=2;
+        var configured=Environment.GetEnvironmentVariable("DBACHECK2_BILLING_GRACE_DAYS");
+        if(int.TryParse(configured,out var parsed) && parsed>=0 && parsed<=30)graceDays=parsed;
+
+        var usable=snapshot.State is SubscriptionState.Active or SubscriptionState.Trial;
+        if(!usable && snapshot.State==SubscriptionState.PastDue && snapshot.AccessUntil.HasValue)
+            usable=snapshot.AccessUntil.Value.ToUniversalTime().AddDays(graceDays)>=DateTime.UtcNow;
+
+        return usable && PlanCatalog.Includes(snapshot.Plan,entitlement);
+    }
 
     public static void OpenExternal(string url)=>Process.Start(new ProcessStartInfo(url){UseShellExecute=true});
 
