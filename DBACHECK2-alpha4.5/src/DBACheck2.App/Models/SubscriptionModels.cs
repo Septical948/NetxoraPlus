@@ -2,7 +2,7 @@ namespace DBACheck2.App.Models;
 
 public enum SubscriptionPlan { Standard, Plus, Enterprise }
 public enum BillingCycle { Monthly, Annual }
-public enum SubscriptionState { Development, Trial, Active, PastDue, Canceled, Expired, Unknown }
+public enum SubscriptionState { Development, Trial, Active, PastDue, Canceled, Expired, Unknown, Paused }
 public enum FeatureAvailability { Available, Planned }
 
 public enum ProductEntitlement
@@ -56,6 +56,8 @@ public sealed class SubscriptionSnapshot
     public string SubscriptionReference { get; set; } = "";
     public DateTime LastValidatedAt { get; set; } = DateTime.MinValue;
     public bool DevelopmentLicense { get; set; } = true;
+    public bool CancelAtPeriodEnd { get; set; }
+    public string PriceReference { get; set; } = "";
 }
 
 public sealed class BillingLinkResponse
