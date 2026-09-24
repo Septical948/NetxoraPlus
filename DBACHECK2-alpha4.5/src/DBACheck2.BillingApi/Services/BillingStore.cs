@@ -34,6 +34,8 @@ public sealed class BillingStore
  customer_ref TEXT NOT NULL DEFAULT '',
  subscription_ref TEXT NOT NULL DEFAULT '',
  checkout_ref TEXT NOT NULL DEFAULT '',
+ cancel_at_period_end INTEGER NOT NULL DEFAULT 0,
+ price_ref TEXT NOT NULL DEFAULT '',
  updated_at TEXT NOT NULL
 );
 CREATE UNIQUE INDEX IF NOT EXISTS ix_subscriptions_subscription
@@ -44,15 +46,45 @@ CREATE TABLE IF NOT EXISTS stripe_events(
  event_id TEXT PRIMARY KEY,
  event_type TEXT NOT NULL,
  processed_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS stripe_event_processing(
+ event_id TEXT PRIMARY KEY,
+ event_type TEXT NOT NULL,
+ state TEXT NOT NULL,
+ last_error TEXT NOT NULL DEFAULT '',
+ updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS installation_credentials(
+ installation_id TEXT PRIMARY KEY,
+ secret_hash TEXT NOT NULL,
+ created_at TEXT NOT NULL,
+ last_seen_at TEXT NOT NULL
 );";
         cmd.ExecuteNonQuery();
+
+        EnsureColumn(cn,"subscriptions","cancel_at_period_end","INTEGER NOT NULL DEFAULT 0");
+        EnsureColumn(cn,"subscriptions","price_ref","TEXT NOT NULL DEFAULT ''");
+    }
+
+    private static void EnsureColumn(SqliteConnection cn,string table,string column,string definition)
+    {
+        using var check=cn.CreateCommand();
+        check.CommandText=$"PRAGMA table_info({table});";
+        using var r=check.ExecuteReader();
+        var found=false;
+        while(r.Read())
+            if(string.Equals(r.GetString(1),column,StringComparison.OrdinalIgnoreCase)){found=true;break;}
+        if(found)return;
+        using var alter=cn.CreateCommand();
+        alter.CommandText=$"ALTER TABLE {table} ADD COLUMN {column} {definition};";
+        alter.ExecuteNonQuery();
     }
 
     public async Task<SubscriptionRecord?> GetAsync(string installationId)
     {
         await using var cn=Open();await cn.OpenAsync();
         await using var cmd=cn.CreateCommand();
-        cmd.CommandText=@"SELECT installation_id,plan,state,cycle,period_end,customer_ref,subscription_ref,checkout_ref,updated_at
+        cmd.CommandText=@"SELECT installation_id,plan,state,cycle,period_end,customer_ref,subscription_ref,checkout_ref,cancel_at_period_end,price_ref,updated_at
 FROM subscriptions WHERE installation_id=$id;";
         cmd.Parameters.AddWithValue("$id",installationId);
         await using var r=await cmd.ExecuteReaderAsync();
@@ -65,7 +97,7 @@ FROM subscriptions WHERE installation_id=$id;";
         if(string.IsNullOrWhiteSpace(subscriptionReference))return null;
         await using var cn=Open();await cn.OpenAsync();
         await using var cmd=cn.CreateCommand();
-        cmd.CommandText=@"SELECT installation_id,plan,state,cycle,period_end,customer_ref,subscription_ref,checkout_ref,updated_at
+        cmd.CommandText=@"SELECT installation_id,plan,state,cycle,period_end,customer_ref,subscription_ref,checkout_ref,cancel_at_period_end,price_ref,updated_at
 FROM subscriptions WHERE subscription_ref=$id LIMIT 1;";
         cmd.Parameters.AddWithValue("$id",subscriptionReference);
         await using var r=await cmd.ExecuteReaderAsync();
@@ -78,12 +110,13 @@ FROM subscriptions WHERE subscription_ref=$id LIMIT 1;";
         await using var cn=Open();await cn.OpenAsync();
         await using var cmd=cn.CreateCommand();
         cmd.CommandText=@"INSERT INTO subscriptions
-(installation_id,plan,state,cycle,period_end,customer_ref,subscription_ref,checkout_ref,updated_at)
-VALUES($id,$plan,$state,$cycle,$end,$customer,$subscription,$checkout,$updated)
+(installation_id,plan,state,cycle,period_end,customer_ref,subscription_ref,checkout_ref,cancel_at_period_end,price_ref,updated_at)
+VALUES($id,$plan,$state,$cycle,$end,$customer,$subscription,$checkout,$cancel,$price,$updated)
 ON CONFLICT(installation_id) DO UPDATE SET
  plan=excluded.plan,state=excluded.state,cycle=excluded.cycle,period_end=excluded.period_end,
  customer_ref=excluded.customer_ref,subscription_ref=excluded.subscription_ref,
- checkout_ref=excluded.checkout_ref,updated_at=excluded.updated_at;";
+ checkout_ref=excluded.checkout_ref,cancel_at_period_end=excluded.cancel_at_period_end,
+ price_ref=excluded.price_ref,updated_at=excluded.updated_at;";
         cmd.Parameters.AddWithValue("$id",value.InstallationId);
         cmd.Parameters.AddWithValue("$plan",(int)value.Plan);
         cmd.Parameters.AddWithValue("$state",(int)value.State);
@@ -92,20 +125,78 @@ ON CONFLICT(installation_id) DO UPDATE SET
         cmd.Parameters.AddWithValue("$customer",value.CustomerReference??"");
         cmd.Parameters.AddWithValue("$subscription",value.SubscriptionReference??"");
         cmd.Parameters.AddWithValue("$checkout",value.CheckoutSessionReference??"");
+        cmd.Parameters.AddWithValue("$cancel",value.CancelAtPeriodEnd?1:0);
+        cmd.Parameters.AddWithValue("$price",value.PriceReference??"");
         cmd.Parameters.AddWithValue("$updated",value.LastValidatedAt.ToString("O"));
         await cmd.ExecuteNonQueryAsync();
     }
 
-    public async Task<bool> TryMarkEventAsync(string eventId,string eventType)
+    public async Task<bool> TryBeginEventAsync(string eventId,string eventType)
     {
         await using var cn=Open();await cn.OpenAsync();
+        await using var tx=await cn.BeginTransactionAsync();
+
+        await using var read=cn.CreateCommand();
+        read.Transaction=(SqliteTransaction)tx;
+        read.CommandText="SELECT state FROM stripe_event_processing WHERE event_id=$id;";
+        read.Parameters.AddWithValue("$id",eventId);
+        var existing=Convert.ToString(await read.ExecuteScalarAsync());
+
+        if(existing=="PROCESSED" || existing=="PROCESSING")
+        {
+            await tx.RollbackAsync();
+            return false;
+        }
+
         await using var cmd=cn.CreateCommand();
-        cmd.CommandText=@"INSERT OR IGNORE INTO stripe_events(event_id,event_type,processed_at)
-VALUES($id,$type,$now); SELECT changes();";
+        cmd.Transaction=(SqliteTransaction)tx;
+        cmd.CommandText=@"INSERT INTO stripe_event_processing(event_id,event_type,state,last_error,updated_at)
+VALUES($id,$type,'PROCESSING','',$now)
+ON CONFLICT(event_id) DO UPDATE SET event_type=excluded.event_type,state='PROCESSING',last_error='',updated_at=excluded.updated_at;";
         cmd.Parameters.AddWithValue("$id",eventId);
         cmd.Parameters.AddWithValue("$type",eventType);
         cmd.Parameters.AddWithValue("$now",DateTime.UtcNow.ToString("O"));
-        return Convert.ToInt32(await cmd.ExecuteScalarAsync())>0;
+        await cmd.ExecuteNonQueryAsync();
+        await tx.CommitAsync();
+        return true;
+    }
+
+    public async Task MarkEventProcessedAsync(string eventId,string eventType)
+    {
+        await using var cn=Open();await cn.OpenAsync();
+        await using var tx=await cn.BeginTransactionAsync();
+
+        await using(var cmd=cn.CreateCommand())
+        {
+            cmd.Transaction=(SqliteTransaction)tx;
+            cmd.CommandText=@"UPDATE stripe_event_processing SET state='PROCESSED',last_error='',updated_at=$now WHERE event_id=$id;";
+            cmd.Parameters.AddWithValue("$id",eventId);
+            cmd.Parameters.AddWithValue("$now",DateTime.UtcNow.ToString("O"));
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        await using(var legacy=cn.CreateCommand())
+        {
+            legacy.Transaction=(SqliteTransaction)tx;
+            legacy.CommandText=@"INSERT OR REPLACE INTO stripe_events(event_id,event_type,processed_at) VALUES($id,$type,$now);";
+            legacy.Parameters.AddWithValue("$id",eventId);
+            legacy.Parameters.AddWithValue("$type",eventType);
+            legacy.Parameters.AddWithValue("$now",DateTime.UtcNow.ToString("O"));
+            await legacy.ExecuteNonQueryAsync();
+        }
+
+        await tx.CommitAsync();
+    }
+
+    public async Task MarkEventFailedAsync(string eventId,string error)
+    {
+        await using var cn=Open();await cn.OpenAsync();
+        await using var cmd=cn.CreateCommand();
+        cmd.CommandText=@"UPDATE stripe_event_processing SET state='FAILED',last_error=$error,updated_at=$now WHERE event_id=$id;";
+        cmd.Parameters.AddWithValue("$id",eventId);
+        cmd.Parameters.AddWithValue("$error",error.Length>2000?error[..2000]:error);
+        cmd.Parameters.AddWithValue("$now",DateTime.UtcNow.ToString("O"));
+        await cmd.ExecuteNonQueryAsync();
     }
 
     private static SubscriptionRecord Read(SqliteDataReader r)=>new()
@@ -118,7 +209,9 @@ VALUES($id,$type,$now); SELECT changes();";
         CustomerReference=r.GetString(5),
         SubscriptionReference=r.GetString(6),
         CheckoutSessionReference=r.GetString(7),
-        LastValidatedAt=DateTime.TryParse(r.GetString(8),out var updated)?updated:DateTime.MinValue,
+        CancelAtPeriodEnd=!r.IsDBNull(8) && r.GetInt32(8)!=0,
+        PriceReference=r.IsDBNull(9)?"":r.GetString(9),
+        LastValidatedAt=DateTime.TryParse(r.GetString(10),out var updated)?updated:DateTime.MinValue,
         DevelopmentLicense=false
     };
 }
