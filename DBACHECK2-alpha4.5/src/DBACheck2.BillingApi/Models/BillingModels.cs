@@ -13,6 +13,7 @@ public sealed class SubscriptionRecord
     public SubscriptionState State { get; set; } = SubscriptionState.Unknown;
     public BillingCycle Cycle { get; set; } = BillingCycle.Monthly;
     public DateTime? CurrentPeriodEnd { get; set; }
+    public DateTime? AccessUntil { get; set; }
     public string CustomerReference { get; set; } = "";
     public string SubscriptionReference { get; set; } = "";
     public string CheckoutSessionReference { get; set; } = "";
