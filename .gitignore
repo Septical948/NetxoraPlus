@@ -17,3 +17,11 @@ x86/
 # DBACHECK generated files
 *.log
 *.tmp
+
+# Billing / secrets
+.env
+.env.*
+!.env.example
+**/billing.db
+**/data/*.db
+**/secrets.json
