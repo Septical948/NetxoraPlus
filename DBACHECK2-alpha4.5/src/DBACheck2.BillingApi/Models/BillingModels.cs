@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace DBACheck2.BillingApi.Models;
 
 public enum SubscriptionPlan { Standard, Plus, Enterprise }
@@ -20,6 +22,7 @@ public sealed class SubscriptionRecord
 
 public sealed class CheckoutRequest
 {
+    [JsonPropertyName("installation_id")]
     public string InstallationId { get; set; } = "";
     public string Plan { get; set; } = "";
     public string Cycle { get; set; } = "";
@@ -27,6 +30,7 @@ public sealed class CheckoutRequest
 
 public sealed class PortalRequest
 {
+    [JsonPropertyName("installation_id")]
     public string InstallationId { get; set; } = "";
 }
 
