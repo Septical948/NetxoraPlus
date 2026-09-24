@@ -22,7 +22,7 @@ public sealed class StripeBillingService
             StripeConfiguration.ApiKey=_secretKey;
     }
 
-    public bool StripeConfigured=>_secretKey.StartsWith("sk_",StringComparison.Ordinal);
+    public bool StripeConfigured=>_secretKey.StartsWith("sk_",StringComparison.Ordinal) || _secretKey.StartsWith("rk_",StringComparison.Ordinal);
     public bool WebhookConfigured=>_webhookSecret.StartsWith("whsec_",StringComparison.Ordinal);
     public bool PricesConfigured=>RequiredPriceVariables().All(x=>!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(x)));
 
@@ -31,8 +31,8 @@ public sealed class StripeBillingService
         webhook=WebhookConfigured,
         prices=PricesConfigured,
         public_url=_publicUrl,
-        mode=_secretKey.StartsWith("sk_live_",StringComparison.Ordinal)?"live":
-             _secretKey.StartsWith("sk_test_",StringComparison.Ordinal)?"test":"unconfigured"
+        mode=_secretKey.StartsWith("sk_live_",StringComparison.Ordinal)||_secretKey.StartsWith("rk_live_",StringComparison.Ordinal)?"live":
+             _secretKey.StartsWith("sk_test_",StringComparison.Ordinal)||_secretKey.StartsWith("rk_test_",StringComparison.Ordinal)?"test":"unconfigured"
     };
 
     public async Task<string> CreateCheckoutAsync(CheckoutRequest request)
@@ -72,7 +72,10 @@ public sealed class StripeBillingService
         if(existing is not null && !string.IsNullOrWhiteSpace(existing.CustomerReference))
             options.Customer=existing.CustomerReference;
 
-        var session=await new SessionService().CreateAsync(options);
+        var requestOptions=string.IsNullOrWhiteSpace(request.RequestId)
+            ? null
+            : new RequestOptions {IdempotencyKey=$"checkout:{request.InstallationId}:{request.RequestId}"};
+        var session=await new SessionService().CreateAsync(options,requestOptions);
 
         await _store.UpsertAsync(new SubscriptionRecord {
             InstallationId=request.InstallationId,
@@ -111,20 +114,30 @@ public sealed class StripeBillingService
 
     public async Task ProcessEventAsync(Stripe.Event stripeEvent)
     {
-        if(!await _store.TryMarkEventAsync(stripeEvent.Id,stripeEvent.Type))return;
+        if(!await _store.TryBeginEventAsync(stripeEvent.Id,stripeEvent.Type))return;
 
-        switch(stripeEvent.Type)
+        try
         {
-            case "checkout.session.completed":
-                if(stripeEvent.Data.Object is Stripe.Checkout.Session checkout)
-                    await ApplyCheckoutAsync(checkout);
-                break;
-            case "customer.subscription.created":
-            case "customer.subscription.updated":
-            case "customer.subscription.deleted":
-                if(stripeEvent.Data.Object is Stripe.Subscription subscription)
-                    await ApplySubscriptionAsync(subscription);
-                break;
+            switch(stripeEvent.Type)
+            {
+                case "checkout.session.completed":
+                    if(stripeEvent.Data.Object is Stripe.Checkout.Session checkout)
+                        await ApplyCheckoutAsync(checkout);
+                    break;
+                case "customer.subscription.created":
+                case "customer.subscription.updated":
+                case "customer.subscription.deleted":
+                    if(stripeEvent.Data.Object is Stripe.Subscription subscription)
+                        await ApplySubscriptionAsync(subscription);
+                    break;
+            }
+
+            await _store.MarkEventProcessedAsync(stripeEvent.Id,stripeEvent.Type);
+        }
+        catch(Exception ex)
+        {
+            await _store.MarkEventFailedAsync(stripeEvent.Id,ex.Message);
+            throw;
         }
     }
 
@@ -155,11 +168,23 @@ public sealed class StripeBillingService
         if(existing is null && string.IsNullOrWhiteSpace(installation))return;
 
         var record=existing??new SubscriptionRecord{InstallationId=installation!};
-        record.Plan=ParsePlan(Get(subscription.Metadata,"plan"),record.Plan);
-        record.Cycle=ParseCycle(Get(subscription.Metadata,"cycle"),record.Cycle);
+
+        if(TryResolvePlanCycleFromPrice(subscription,out var pricePlan,out var priceCycle,out var priceId))
+        {
+            record.Plan=pricePlan;
+            record.Cycle=priceCycle;
+            record.PriceReference=priceId;
+        }
+        else
+        {
+            record.Plan=ParsePlan(Get(subscription.Metadata,"plan"),record.Plan);
+            record.Cycle=ParseCycle(Get(subscription.Metadata,"cycle"),record.Cycle);
+        }
+
         record.CustomerReference=subscription.CustomerId??record.CustomerReference;
         record.SubscriptionReference=subscription.Id;
         record.State=MapState(subscription.Status);
+        record.CancelAtPeriodEnd=subscription.CancelAtPeriodEnd;
         record.CurrentPeriodEnd=TryGetPeriodEnd(subscription);
         await _store.UpsertAsync(record);
     }
@@ -193,9 +218,37 @@ public sealed class StripeBillingService
         "active"=>SubscriptionState.Active,
         "past_due" or "unpaid" or "incomplete"=>SubscriptionState.PastDue,
         "canceled"=>SubscriptionState.Canceled,
+        "paused"=>SubscriptionState.Paused,
         "incomplete_expired"=>SubscriptionState.Expired,
         _=>SubscriptionState.Unknown
     };
+
+    private static bool TryResolvePlanCycleFromPrice(Stripe.Subscription subscription,out SubscriptionPlan plan,out BillingCycle cycle,out string priceId)
+    {
+        plan=SubscriptionPlan.Standard;
+        cycle=BillingCycle.Monthly;
+        priceId=subscription.Items?.Data?.FirstOrDefault()?.Price?.Id??"";
+        if(string.IsNullOrWhiteSpace(priceId))return false;
+
+        var mappings=new[] {
+            (Name:"STRIPE_PRICE_STANDARD_MONTHLY",Plan:SubscriptionPlan.Standard,Cycle:BillingCycle.Monthly),
+            (Name:"STRIPE_PRICE_STANDARD_ANNUAL",Plan:SubscriptionPlan.Standard,Cycle:BillingCycle.Annual),
+            (Name:"STRIPE_PRICE_PLUS_MONTHLY",Plan:SubscriptionPlan.Plus,Cycle:BillingCycle.Monthly),
+            (Name:"STRIPE_PRICE_PLUS_ANNUAL",Plan:SubscriptionPlan.Plus,Cycle:BillingCycle.Annual)
+        };
+
+        foreach(var x in mappings)
+        {
+            var configured=(Environment.GetEnvironmentVariable(x.Name)??"").Trim();
+            if(!string.IsNullOrWhiteSpace(configured) && string.Equals(configured,priceId,StringComparison.Ordinal))
+            {
+                plan=x.Plan;
+                cycle=x.Cycle;
+                return true;
+            }
+        }
+        return false;
+    }
 
     private static string? Get(IDictionary<string,string>? metadata,string key)
         =>metadata is not null && metadata.TryGetValue(key,out var value)?value:null;
