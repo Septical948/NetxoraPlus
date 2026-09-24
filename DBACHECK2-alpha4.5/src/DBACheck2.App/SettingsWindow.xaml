@@ -26,12 +26,13 @@
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <Border Background="#101526" BorderBrush="#20263A" BorderThickness="1" CornerRadius="8" Padding="16">
    <Grid>
-    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
     <StackPanel>
      <TextBlock x:Name="SubscriptionTitleText" Text="SUBSCRIPTION" Foreground="#8F9BB3" FontWeight="Bold"/>
      <TextBlock x:Name="SubscriptionText" Text="Plans, license status and billing." Foreground="#B7C3D7" Margin="0,6,14,0" TextWrapping="Wrap"/>
     </StackPanel>
     <Button Grid.Column="1" x:Name="SubscriptionButton" Content="MANAGE SUBSCRIPTION" Padding="14,8" VerticalAlignment="Center" Click="SubscriptionButton_Click"/>
+    <Button Grid.Column="2" x:Name="EnterpriseButton" Content="ENTERPRISE CENTER" Margin="8,0,0,0" Padding="14,8" VerticalAlignment="Center" Click="EnterpriseButton_Click"/>
    </Grid>
   </Border>
   <Border Grid.Row="1" Background="#101526" BorderBrush="#20263A" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,12,0,0">
