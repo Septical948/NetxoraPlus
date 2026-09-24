@@ -4,6 +4,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DBACheck2.App", "src\DBACheck2.App\DBACheck2.App.csproj", "{D84C52C1-6E9C-4B46-916E-5AB2A708EA21}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DBACheck2.BillingApi", "src\DBACheck2.BillingApi\DBACheck2.BillingApi.csproj", "{A76C0E7D-EE77-4F30-9BB4-F60F76788A2A}"
+EndProject
 Global
  GlobalSection(SolutionConfigurationPlatforms) = preSolution
   Debug|Any CPU = Debug|Any CPU
@@ -14,5 +16,9 @@ Global
   {D84C52C1-6E9C-4B46-916E-5AB2A708EA21}.Debug|Any CPU.Build.0 = Debug|Any CPU
   {D84C52C1-6E9C-4B46-916E-5AB2A708EA21}.Release|Any CPU.ActiveCfg = Release|Any CPU
   {D84C52C1-6E9C-4B46-916E-5AB2A708EA21}.Release|Any CPU.Build.0 = Release|Any CPU
+  {A76C0E7D-EE77-4F30-9BB4-F60F76788A2A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+  {A76C0E7D-EE77-4F30-9BB4-F60F76788A2A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+  {A76C0E7D-EE77-4F30-9BB4-F60F76788A2A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+  {A76C0E7D-EE77-4F30-9BB4-F60F76788A2A}.Release|Any CPU.Build.0 = Release|Any CPU
  EndGlobalSection
 EndGlobal
