@@ -4,7 +4,7 @@ namespace DBACheck2.BillingApi.Models;
 
 public enum SubscriptionPlan { Standard, Plus, Enterprise }
 public enum BillingCycle { Monthly, Annual }
-public enum SubscriptionState { Development, Trial, Active, PastDue, Canceled, Expired, Unknown }
+public enum SubscriptionState { Development, Trial, Active, PastDue, Canceled, Expired, Unknown, Paused }
 
 public sealed class SubscriptionRecord
 {
@@ -18,6 +18,8 @@ public sealed class SubscriptionRecord
     public string CheckoutSessionReference { get; set; } = "";
     public DateTime LastValidatedAt { get; set; } = DateTime.UtcNow;
     public bool DevelopmentLicense { get; set; }
+    public bool CancelAtPeriodEnd { get; set; }
+    public string PriceReference { get; set; } = "";
 }
 
 public sealed class CheckoutRequest
@@ -26,6 +28,8 @@ public sealed class CheckoutRequest
     public string InstallationId { get; set; } = "";
     public string Plan { get; set; } = "";
     public string Cycle { get; set; } = "";
+    [JsonPropertyName("request_id")]
+    public string RequestId { get; set; } = "";
 }
 
 public sealed class PortalRequest
