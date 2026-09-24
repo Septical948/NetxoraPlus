@@ -68,12 +68,12 @@
      <TextBlock x:Name="EnterprisePriceText" Text="Contact sales" Foreground="#38E8D0" FontSize="24" FontWeight="Bold" Margin="0,7,0,10"/>
      <TextBlock x:Name="EnterprisePositionText" Text="Organization-wide DBA operations." Foreground="#B7C3D7" TextWrapping="Wrap" Margin="0,0,0,12"/>
      <TextBlock Text="✓ Everything in Plus" Foreground="#E8EDF7" Margin="0,3"/>
-     <TextBlock Text="✓ Multi-seat licensing" Foreground="#E8EDF7" Margin="0,3"/>
-     <TextBlock Text="✓ Custom integrations / onboarding" Foreground="#E8EDF7" Margin="0,3"/>
-     <TextBlock Text="✓ Enterprise support / SLA" Foreground="#E8EDF7" Margin="0,3"/>
-     <TextBlock Text="ROADMAP · Shared team operations" Foreground="#8F9BB3" Margin="0,8,0,3"/>
-     <TextBlock Text="ROADMAP · SSO / RBAC" Foreground="#8F9BB3" Margin="0,3"/>
-     <TextBlock Text="ROADMAP · Audit / central policy" Foreground="#8F9BB3" Margin="0,3"/>
+     <TextBlock Text="✓ Multi-seat licensing foundation" Foreground="#E8EDF7" Margin="0,3"/>
+     <TextBlock Text="✓ Custom integrations / onboarding workspace" Foreground="#E8EDF7" Margin="0,3"/>
+     <TextBlock Text="✓ Enterprise SLA policy workspace" Foreground="#E8EDF7" Margin="0,3"/>
+     <TextBlock Text="BETA · Shared team operations (local preview)" Foreground="#BDA7FF" Margin="0,8,0,3"/>
+     <TextBlock Text="BETA · SSO / RBAC configuration foundation" Foreground="#BDA7FF" Margin="0,3"/>
+     <TextBlock Text="BETA · Audit / central policy foundation" Foreground="#BDA7FF" Margin="0,3"/>
      <Button x:Name="EnterpriseButton" Content="CONTACT SALES" Margin="0,16,0,0" Padding="12,8" Click="EnterpriseButton_Click"/>
     </StackPanel>
    </Border>
