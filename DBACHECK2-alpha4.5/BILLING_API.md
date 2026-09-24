@@ -100,8 +100,13 @@ Relevant events:
 - `customer.subscription.created`
 - `customer.subscription.updated`
 - `customer.subscription.deleted`
+- `customer.subscription.paused`
+- `customer.subscription.resumed`
+- `invoice.paid`
+- `invoice.payment_failed`
+- `invoice.payment_action_required`
 
-Webhook processing is idempotent through the local `stripe_events` table.
+Webhook processing is idempotent and retry-safe. An event is marked PROCESSED only after its business logic succeeds; failures remain retryable on Stripe redelivery.
 
 ## Desktop configuration
 
@@ -215,3 +220,26 @@ Before enabling entitlement enforcement:
 8. add grace-period/offline licensing
 9. add signed license/offline strategy for Enterprise
 10. enable Standard / Plus entitlement enforcement only after those tests pass
+
+
+## Desktop installation authentication
+
+Billing endpoints are not authorized by a bare `installation_id`.
+
+The desktop client generates a random installation credential, protects it locally with Windows DPAPI, and sends it as:
+
+```text
+X-DBACHECK-Installation-Secret: ...
+```
+
+The Billing API stores only its SHA-256 hash. The raw installation credential and Stripe API keys are never persisted together.
+
+## Customer Portal plan changes
+
+Subscription metadata is not treated as the final plan authority after a Customer Portal change.
+
+On `customer.subscription.updated`, the Billing API maps the actual Stripe subscription item `price_...` back to Standard/Plus and monthly/annual. This prevents an upgrade/downgrade from leaving stale DBACHECK entitlements.
+
+## Paid-through access
+
+`invoice.paid` updates the server-side `AccessUntil` timestamp. This is separate from the Stripe subscription status and will be used by the future entitlement layer for renewals and a short PastDue grace period.
