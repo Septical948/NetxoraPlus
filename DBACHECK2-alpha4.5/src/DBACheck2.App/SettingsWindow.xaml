@@ -22,11 +22,24 @@
    <TextBlock Grid.Column="2" x:Name="StatusText" Foreground="#38E8D0" Margin="16,7,0,0"/>
   </Grid>
  </Border>
- <Border Grid.Row="2" Background="#101526" BorderBrush="#20263A" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,14,0,0">
-  <StackPanel>
-   <TextBlock x:Name="FutureTitleText" Text="PREFERENCES" Foreground="#8F9BB3" FontWeight="Bold"/>
-   <TextBlock x:Name="FutureText" Text="This area is prepared for future UI, startup and update-channel preferences." Foreground="#B7C3D7" Margin="0,6,0,0" TextWrapping="Wrap"/>
-  </StackPanel>
- </Border>
+ <Grid Grid.Row="2" Margin="0,14,0,0">
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <Border Background="#101526" BorderBrush="#20263A" BorderThickness="1" CornerRadius="8" Padding="16">
+   <Grid>
+    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+    <StackPanel>
+     <TextBlock x:Name="SubscriptionTitleText" Text="SUBSCRIPTION" Foreground="#8F9BB3" FontWeight="Bold"/>
+     <TextBlock x:Name="SubscriptionText" Text="Plans, license status and billing." Foreground="#B7C3D7" Margin="0,6,14,0" TextWrapping="Wrap"/>
+    </StackPanel>
+    <Button Grid.Column="1" x:Name="SubscriptionButton" Content="MANAGE SUBSCRIPTION" Padding="14,8" VerticalAlignment="Center" Click="SubscriptionButton_Click"/>
+   </Grid>
+  </Border>
+  <Border Grid.Row="1" Background="#101526" BorderBrush="#20263A" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,12,0,0">
+   <StackPanel>
+    <TextBlock x:Name="FutureTitleText" Text="PREFERENCES" Foreground="#8F9BB3" FontWeight="Bold"/>
+    <TextBlock x:Name="FutureText" Text="This area is prepared for future UI, startup and update-channel preferences." Foreground="#B7C3D7" Margin="0,6,0,0" TextWrapping="Wrap"/>
+   </StackPanel>
+  </Border>
+ </Grid>
 </Grid>
 </Window>
