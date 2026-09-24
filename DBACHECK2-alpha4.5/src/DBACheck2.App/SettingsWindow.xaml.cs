@@ -8,6 +8,7 @@ public partial class SettingsWindow:Window
 {
     private bool _ready;
     public event Action<AppLanguage>? LanguageChanged;
+    public event Action? SubscriptionRequested;
     private bool En=>LocalizationService.Current==AppLanguage.En;
 
     public SettingsWindow()
@@ -24,9 +25,14 @@ public partial class SettingsWindow:Window
         SubtitleText.Text=En?"Application preferences":"Preferencias de la aplicación";
         LanguageTitleText.Text=En?"LANGUAGE":"IDIOMA";
         LanguageHelpText.Text=En?"Changes apply immediately and are remembered.":"Los cambios se aplican inmediatamente y se recuerdan.";
+        SubscriptionTitleText.Text=En?"SUBSCRIPTION":"SUSCRIPCIÓN";
+        SubscriptionText.Text=En?"Plans, license status and billing.":"Planes, estado de licencia y facturación.";
+        SubscriptionButton.Content=En?"MANAGE SUBSCRIPTION":"GESTIONAR SUSCRIPCIÓN";
         FutureTitleText.Text=En?"PREFERENCES":"PREFERENCIAS";
         FutureText.Text=En?"This area is prepared for future UI, startup and update-channel preferences.":"Esta área queda preparada para preferencias futuras de interfaz, inicio y canal de actualizaciones.";
     }
+
+    private void SubscriptionButton_Click(object sender,RoutedEventArgs e)=>SubscriptionRequested?.Invoke();
 
     private void LanguageBox_SelectionChanged(object sender,SelectionChangedEventArgs e)
     {
