@@ -43,6 +43,7 @@ public partial class MainWindow : Window
             ApplyLanguage();
             UiLocalizationService.Apply(ModuleHost);
         };
+        window.SubscriptionRequested+=()=>HostAnalyzer(new SubscriptionWindow());
         HostAnalyzer(window);
     }
 
