@@ -5,19 +5,22 @@ using Stripe;
 var builder=WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<BillingStore>();
 builder.Services.AddSingleton<StripeBillingService>();
+builder.Services.AddSingleton<InstallationAuthService>();
 
 var app=builder.Build();
 
-app.MapGet("/health",(StripeBillingService stripe,BillingStore store)=>Results.Ok(new {
+app.MapGet("/health",(StripeBillingService stripe)=>Results.Ok(new {
     service="DBACHECK2 Billing API",
     utc=DateTime.UtcNow,
-    database=store.DatabasePath,
+    database="sqlite",
     stripe=stripe.ConfigurationStatus()
 }));
 
-app.MapGet("/v1/subscription/status",async(string installation_id,BillingStore store)=>{
+app.MapGet("/v1/subscription/status",async(string installation_id,HttpRequest request,BillingStore store,InstallationAuthService auth)=>{
     if(string.IsNullOrWhiteSpace(installation_id))
         return Results.BadRequest(new{error="installation_id is required"});
+    if(!await auth.AuthenticateOrRegisterAsync(installation_id,InstallationAuthService.ReadSecret(request)))
+        return Results.Unauthorized();
 
     var record=await store.GetAsync(installation_id);
     return record is null
@@ -32,17 +35,21 @@ app.MapGet("/v1/subscription/status",async(string installation_id,BillingStore s
         : Results.Ok(record);
 });
 
-app.MapPost("/v1/checkout",async(CheckoutRequest request,StripeBillingService stripe)=>{
+app.MapPost("/v1/checkout",async(CheckoutRequest request,HttpRequest http,StripeBillingService stripe,InstallationAuthService auth)=>{
+    if(!await auth.AuthenticateOrRegisterAsync(request.InstallationId,InstallationAuthService.ReadSecret(http)))
+        return Results.Unauthorized();
     try{return Results.Ok(new LinkResponse{Url=await stripe.CreateCheckoutAsync(request)});}
     catch(InvalidOperationException ex){return Results.BadRequest(new{error=ex.Message});}
     catch(StripeException ex){return Results.BadRequest(new{error="Stripe checkout failed.",detail=ex.Message});}
 });
 
-app.MapPost("/v1/customer-portal",async(PortalRequest request,StripeBillingService stripe)=>{
+app.MapPost("/v1/customer-portal",async(PortalRequest request,HttpRequest http,StripeBillingService stripe,InstallationAuthService auth)=>{
     try
     {
         if(string.IsNullOrWhiteSpace(request.InstallationId))
             return Results.BadRequest(new{error="installation_id is required"});
+        if(!await auth.AuthenticateOrRegisterAsync(request.InstallationId,InstallationAuthService.ReadSecret(http)))
+            return Results.Unauthorized();
         return Results.Ok(new LinkResponse{Url=await stripe.CreatePortalAsync(request.InstallationId)});
     }
     catch(InvalidOperationException ex){return Results.BadRequest(new{error=ex.Message});}
