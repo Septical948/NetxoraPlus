@@ -127,8 +127,19 @@ public sealed class StripeBillingService
                 case "customer.subscription.created":
                 case "customer.subscription.updated":
                 case "customer.subscription.deleted":
+                case "customer.subscription.paused":
+                case "customer.subscription.resumed":
                     if(stripeEvent.Data.Object is Stripe.Subscription subscription)
                         await ApplySubscriptionAsync(subscription);
+                    break;
+                case "invoice.paid":
+                    if(stripeEvent.Data.Object is Stripe.Invoice paidInvoice)
+                        await RefreshFromInvoiceAsync(paidInvoice,true);
+                    break;
+                case "invoice.payment_failed":
+                case "invoice.payment_action_required":
+                    if(stripeEvent.Data.Object is Stripe.Invoice failedInvoice)
+                        await RefreshFromInvoiceAsync(failedInvoice,false);
                     break;
             }
 
@@ -186,7 +197,59 @@ public sealed class StripeBillingService
         record.State=MapState(subscription.Status);
         record.CancelAtPeriodEnd=subscription.CancelAtPeriodEnd;
         record.CurrentPeriodEnd=TryGetPeriodEnd(subscription);
+        if(record.State==SubscriptionState.Trial && record.CurrentPeriodEnd.HasValue && !record.AccessUntil.HasValue)
+            record.AccessUntil=record.CurrentPeriodEnd;
         await _store.UpsertAsync(record);
+    }
+
+    private async Task RefreshFromInvoiceAsync(Stripe.Invoice invoice,bool paid)
+    {
+        var subscriptionId=GetInvoiceSubscriptionId(invoice);
+        if(string.IsNullOrWhiteSpace(subscriptionId))return;
+
+        var subscription=await new Stripe.SubscriptionService().GetAsync(subscriptionId);
+        await ApplySubscriptionAsync(subscription);
+
+        if(!paid)return;
+
+        var installation=Get(subscription.Metadata,"installation_id");
+        var record=!string.IsNullOrWhiteSpace(installation)
+            ? await _store.GetAsync(installation)
+            : await _store.FindBySubscriptionAsync(subscription.Id);
+        if(record is null)return;
+
+        var end=TryGetPeriodEnd(subscription);
+        if(end.HasValue)
+        {
+            record.AccessUntil=end;
+            record.CurrentPeriodEnd=end;
+            record.State=MapState(subscription.Status);
+            await _store.UpsertAsync(record);
+        }
+    }
+
+    private static string? GetInvoiceSubscriptionId(Stripe.Invoice invoice)
+    {
+        static string? ReadId(object? value)
+        {
+            if(value is null)return null;
+            if(value is string s)return s;
+            return Convert.ToString(value.GetType().GetProperty("Id")?.GetValue(value));
+        }
+
+        var direct=invoice.GetType().GetProperty("SubscriptionId")?.GetValue(invoice);
+        var directId=ReadId(direct);
+        if(!string.IsNullOrWhiteSpace(directId))return directId;
+
+        var subscription=invoice.GetType().GetProperty("Subscription")?.GetValue(invoice);
+        var subscriptionId=ReadId(subscription);
+        if(!string.IsNullOrWhiteSpace(subscriptionId))return subscriptionId;
+
+        var parent=invoice.GetType().GetProperty("Parent")?.GetValue(invoice);
+        var details=parent?.GetType().GetProperty("SubscriptionDetails")?.GetValue(parent);
+        var nested=details?.GetType().GetProperty("SubscriptionId")?.GetValue(details)
+            ?? details?.GetType().GetProperty("Subscription")?.GetValue(details);
+        return ReadId(nested);
     }
 
     private static DateTime? TryGetPeriodEnd(Stripe.Subscription subscription)
