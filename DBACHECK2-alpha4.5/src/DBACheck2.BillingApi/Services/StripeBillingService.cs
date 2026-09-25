@@ -35,6 +35,17 @@ public sealed class StripeBillingService
              _secretKey.StartsWith("sk_test_",StringComparison.Ordinal)||_secretKey.StartsWith("rk_test_",StringComparison.Ordinal)?"test":"unconfigured"
     };
 
+    public async Task<SubscriptionRecord?> RefreshSubscriptionAsync(string installationId)
+    {
+        var record=await _store.GetAsync(installationId);
+        if(record is null || string.IsNullOrWhiteSpace(record.SubscriptionReference) || !StripeConfigured)
+            return record;
+
+        var subscription=await new SubscriptionService().GetAsync(record.SubscriptionReference);
+        await ApplySubscriptionAsync(subscription);
+        return await _store.GetAsync(installationId);
+    }
+
     public async Task<string> CreateCheckoutAsync(CheckoutRequest request)
     {
         EnsureStripe();
