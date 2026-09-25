@@ -16,23 +16,30 @@ app.MapGet("/health",(StripeBillingService stripe)=>Results.Ok(new {
     stripe=stripe.ConfigurationStatus()
 }));
 
-app.MapGet("/v1/subscription/status",async(string installation_id,HttpRequest request,BillingStore store,InstallationAuthService auth)=>{
+app.MapGet("/v1/subscription/status",async(string installation_id,HttpRequest request,StripeBillingService stripe,InstallationAuthService auth)=>{
     if(string.IsNullOrWhiteSpace(installation_id))
         return Results.BadRequest(new{error="installation_id is required"});
     if(!await auth.AuthenticateOrRegisterAsync(installation_id,InstallationAuthService.ReadSecret(request)))
         return Results.Unauthorized();
 
-    var record=await store.GetAsync(installation_id);
-    return record is null
-        ? Results.Ok(new SubscriptionRecord {
-            InstallationId=installation_id,
-            Plan=SubscriptionPlan.Standard,
-            State=SubscriptionState.Unknown,
-            Cycle=BillingCycle.Monthly,
-            DevelopmentLicense=false,
-            LastValidatedAt=DateTime.UtcNow
-        })
-        : Results.Ok(record);
+    try
+    {
+        var record=await stripe.RefreshSubscriptionAsync(installation_id);
+        return record is null
+            ? Results.Ok(new SubscriptionRecord {
+                InstallationId=installation_id,
+                Plan=SubscriptionPlan.Standard,
+                State=SubscriptionState.Unknown,
+                Cycle=BillingCycle.Monthly,
+                DevelopmentLicense=false,
+                LastValidatedAt=DateTime.UtcNow
+            })
+            : Results.Ok(record);
+    }
+    catch(StripeException ex)
+    {
+        return Results.Problem(title="Stripe status refresh failed",detail=ex.Message,statusCode:503);
+    }
 });
 
 app.MapPost("/v1/checkout",async(CheckoutRequest request,HttpRequest http,StripeBillingService stripe,InstallationAuthService auth)=>{
