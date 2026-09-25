@@ -38,7 +38,7 @@ app.MapGet("/v1/subscription/status",async(string installation_id,HttpRequest re
     }
     catch(StripeException ex)
     {
-        return Results.Problem(title="Stripe status refresh failed",detail=ex.Message,statusCode:503);
+        return Results.Problem(title:"Stripe status refresh failed",detail:ex.Message,statusCode:503);
     }
 });
 
