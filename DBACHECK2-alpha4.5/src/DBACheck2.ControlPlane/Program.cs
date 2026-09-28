@@ -11,7 +11,8 @@ app.MapGet("/health",(ControlPlaneStore store,ControlPlaneAuth auth)=>Results.Ok
     service="DBACHECK2 Enterprise Control Plane",
     utc=DateTime.UtcNow,
     database=Path.GetFileName(store.DatabasePath),
-    bootstrap=auth.BootstrapConfigured
+    bootstrap=auth.BootstrapConfigured,
+    service_token=auth.ServiceTokenConfigured
 }));
 
 app.MapPost("/v1/organizations/bootstrap",async(BootstrapOrganizationRequest body,HttpRequest request,ControlPlaneStore store,ControlPlaneAuth auth)=>{
@@ -45,6 +46,12 @@ app.MapPost("/v1/organizations/{orgId}/members",async(string orgId,MemberCreateR
     if(!await auth.ValidateOrganizationAsync(request,orgId))return Results.Unauthorized();
     if(string.IsNullOrWhiteSpace(body.Email))return Results.BadRequest(new{error="Member email is required."});
     try{return Results.Ok(await store.AddMemberAsync(orgId,body,ControlPlaneAuth.Actor(request)));}
+    catch(InvalidOperationException ex){return Results.BadRequest(new{error=ex.Message});}
+});
+
+app.MapPut("/v1/organizations/{orgId}/members/{memberId}",async(string orgId,string memberId,MemberUpdateRequest body,HttpRequest request,ControlPlaneStore store,ControlPlaneAuth auth)=>{
+    if(!await auth.ValidateOrganizationAsync(request,orgId))return Results.Unauthorized();
+    try{return Results.Ok(await store.UpdateMemberAsync(orgId,memberId,body,ControlPlaneAuth.Actor(request)));}
     catch(InvalidOperationException ex){return Results.BadRequest(new{error=ex.Message});}
 });
 
