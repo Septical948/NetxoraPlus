@@ -52,6 +52,7 @@ public partial class EnterpriseWindow:Window
         OrganizationNameBox.Text=_organization.Name;
         DomainBox.Text=_organization.Domain;
         SeatLimitBox.Text=_organization.SeatLimit.ToString();
+        SeatLimitBox.IsReadOnly=_organization.SeatLimitManagedByBilling;
         SsoModeBox.SelectedItem=_organization.SsoMode;
         SsoIssuerBox.Text=_organization.SsoIssuer;
         SsoClientIdBox.Text=_organization.SsoClientId;
@@ -70,9 +71,17 @@ public partial class EnterpriseWindow:Window
         await LoadAuditAsync();
 
         BackendStatusText.Text=_service.EnterpriseBackendConfigured
-            ? (En?$"Enterprise API configured: {_service.EnterpriseBackend}":$"API Enterprise configurada: {_service.EnterpriseBackend}")
+            ? (En
+                ?$"CONTROL PLANE · {_service.EnterpriseBackend} · Org {_service.EnterpriseOrganizationId}"
+                :$"CONTROL PLANE · {_service.EnterpriseBackend} · Org {_service.EnterpriseOrganizationId}")
             : (En?"LOCAL BETA WORKSPACE · Enterprise backend not configured":"WORKSPACE BETA LOCAL · backend Enterprise no configurado");
-        WorkspaceStatusText.Text=$"{_organization.Name} · {_service.DatabasePath}";
+
+        var license=$"{_organization.LicenseState} · Seats {_organization.SeatLimit}";
+        if(_organization.SeatLimitManagedByBilling)license+=" · BILLING MANAGED";
+        if(!string.IsNullOrWhiteSpace(_organization.ContractReference))license+=$" · {_organization.ContractReference}";
+        WorkspaceStatusText.Text=_service.EnterpriseBackendConfigured
+            ?$"{_organization.Name} · {license}"
+            :$"{_organization.Name} · {_service.DatabasePath} · {license}";
     }
 
     private async Task LoadMembersAsync()
@@ -91,7 +100,7 @@ public partial class EnterpriseWindow:Window
     {
         _organization.Name=OrganizationNameBox.Text.Trim();
         _organization.Domain=DomainBox.Text.Trim();
-        if(int.TryParse(SeatLimitBox.Text,out var seats)&&seats>0)_organization.SeatLimit=seats;
+        if(!_organization.SeatLimitManagedByBilling && int.TryParse(SeatLimitBox.Text,out var seats)&&seats>0)_organization.SeatLimit=seats;
         await _service.SaveOrganizationAsync(_organization);
         await LoadMembersAsync();
         WorkspaceStatusText.Text=En?"Organization saved.":"Organización guardada.";
