@@ -12,6 +12,7 @@ public partial class IntegrationWindow:Window
     private readonly ExternalEventDiagnosisService _diagnosis=new();
     private readonly IncidentHistoryService _history=new();
     private List<IntegrationConnectionProfile> _items=new();
+    private List<IntegrationEvent> _loadedEvents=new();
     private ExternalDiagnosisResult? _lastDiagnosis;
     private bool En=>LocalizationService.Current==AppLanguage.En;
 
@@ -20,6 +21,7 @@ public partial class IntegrationWindow:Window
         InitializeComponent();
         SourceBox.ItemsSource=Enum.GetValues<IntegrationSource>();
         SourceBox.SelectedItem=IntegrationSource.Zabbix;
+        InitializeDomainFilter();
         ApplyLanguage();
         Loaded+=async(_,__)=>await RefreshProfilesAsync();
     }
@@ -37,7 +39,9 @@ public partial class IntegrationWindow:Window
         TestButton.Content=En?"TEST API":"PROBAR API";LoadProblemsButton.Content=En?"LOAD OPEN PROBLEMS":"CARGAR PROBLEMAS ABIERTOS";
         DiagnoseButton.Content=En?"DIAGNOSE SELECTED":"DIAGNOSTICAR SELECCIONADO";CreateIncidentButton.Content=En?"CREATE INCIDENT":"CREAR INCIDENTE";
         SeverityColumn.Header=En?"Severity":"Severidad";NativeSeverityColumn.Header=En?"Native":"Nativa";HostColumn.Header="Host";
+        DomainColumn.Header=En?"Domain":"Dominio";
         ProblemColumn.Header=En?"Problem":"Problema";TimeColumn.Header=En?"Time":"Hora";AckColumn.Header=En?"Ack":"Recon.";
+        RefreshDomainFilterLabels();
         DetailTitleText.Text=En?"CORRELATION / EVIDENCE":"CORRELACIÓN / EVIDENCIA";
         ExpandDetailButton.Content=En?"EXPAND":"EXPANDIR";
         DetailText.Text=En?"Select a monitoring problem to inspect its DBACHECK correlation hint.":"Seleccioná un problema de monitoreo para inspeccionar su correlación DBACHECK.";
@@ -101,9 +105,11 @@ public partial class IntegrationWindow:Window
     {
         try{
             SetBusy(true);StatusText.Text=En?"Loading open monitoring problems...":"Cargando problemas abiertos de monitoreo...";
-            var rows=await Provider().GetOpenEventsAsync(100);EventsGrid.ItemsSource=rows;
-            var critical=rows.Count(x=>x.Severity=="CRITICAL");var warnings=rows.Count(x=>x.Severity=="WARNING");
-            StatusText.Text=En?$"{rows.Count} open problem(s) | Critical {critical} | Warning {warnings}":$"{rows.Count} problema(s) abierto(s) | Críticos {critical} | Warning {warnings}";
+            _loadedEvents=await Provider().GetOpenEventsAsync(500);
+            foreach(var ev in _loadedEvents)
+                if(string.IsNullOrWhiteSpace(ev.Domain) || ev.Domain=="OTHER")
+                    ev.Domain=MonitoringDomainClassifier.Classify(ev);
+            ApplyDomainFilter();
         }catch(Exception ex){StatusText.Text="ERROR: "+ex.Message;}
         finally{SetBusy(false);}
     }
@@ -113,7 +119,62 @@ public partial class IntegrationWindow:Window
         _lastDiagnosis=null;CreateIncidentButton.IsEnabled=false;
         DiagnoseButton.IsEnabled=EventsGrid.SelectedItem is IntegrationEvent;
         if(EventsGrid.SelectedItem is not IntegrationEvent x)return;
-        DetailText.Text=$"{x.Source} | {x.Severity} ({x.NativeSeverity})\nHost: {x.Host}\nTime: {x.Timestamp:yyyy-MM-dd HH:mm:ss}\nEvent ID: {x.ExternalId}\nAcknowledged: {x.Acknowledged} | Suppressed: {x.Suppressed}\n\nPROBLEM\n{x.Name}\n\nTAGS\n{x.Tags}\n\nMONITOR DETAIL\n{x.RawDetail}\n\nDBACHECK CORRELATION HINT\n{x.CorrelationHint}";
+        DetailText.Text=$"{x.Source} | {x.Severity} ({x.NativeSeverity})\nDomain: {MonitoringDomainClassifier.Display(x.Domain,En)}\nHost: {x.Host}\nTime: {x.Timestamp:yyyy-MM-dd HH:mm:ss}\nEvent ID: {x.ExternalId}\nAcknowledged: {x.Acknowledged} | Suppressed: {x.Suppressed}\n\nPROBLEM\n{x.Name}\n\nTAGS\n{x.Tags}\n\nMONITOR DETAIL\n{x.RawDetail}\n\nDBACHECK CORRELATION HINT\n{x.CorrelationHint}";
+    }
+
+    private sealed class DomainFilterItem
+    {
+        public string Key { get; init; } = "ALL";
+        public string Label { get; set; } = "";
+        public override string ToString()=>Label;
+    }
+
+    private void InitializeDomainFilter()
+    {
+        DomainFilterBox.ItemsSource=new List<DomainFilterItem> {
+            new(){Key="ALL"},
+            new(){Key="DATABASE"},
+            new(){Key="OS"},
+            new(){Key="NETWORK"},
+            new(){Key="APPLICATION"},
+            new(){Key="OTHER"}
+        };
+        RefreshDomainFilterLabels();
+        DomainFilterBox.SelectedIndex=0;
+    }
+
+    private void RefreshDomainFilterLabels()
+    {
+        if(DomainFilterBox.ItemsSource is not IEnumerable<DomainFilterItem> items)return;
+        foreach(var item in items)
+            item.Label=MonitoringDomainClassifier.Display(item.Key,En);
+        DomainFilterBox.Items.Refresh();
+    }
+
+    private void DomainFilterBox_SelectionChanged(object sender,SelectionChangedEventArgs e)
+        =>ApplyDomainFilter();
+
+    private void ApplyDomainFilter()
+    {
+        if(EventsGrid is null || DomainFilterBox is null)return;
+
+        var key=(DomainFilterBox.SelectedItem as DomainFilterItem)?.Key??"ALL";
+        var rows=key=="ALL"
+            ? _loadedEvents
+            : _loadedEvents.Where(x=>string.Equals(x.Domain,key,StringComparison.OrdinalIgnoreCase)).ToList();
+
+        EventsGrid.ItemsSource=null;
+        EventsGrid.ItemsSource=rows;
+
+        var critical=rows.Count(x=>x.Severity=="CRITICAL");
+        var warnings=rows.Count(x=>x.Severity=="WARNING");
+        var db=_loadedEvents.Count(x=>x.Domain=="DATABASE");
+        var os=_loadedEvents.Count(x=>x.Domain=="OS");
+        var net=_loadedEvents.Count(x=>x.Domain=="NETWORK");
+
+        StatusText.Text=En
+            ?$"{rows.Count}/{_loadedEvents.Count} shown | Critical {critical} | Warning {warnings} | DB {db} | OS {os} | Network {net}"
+            :$"{rows.Count}/{_loadedEvents.Count} visibles | Críticos {critical} | Warning {warnings} | BD {db} | SO {os} | Red {net}";
     }
 
     private async void Diagnose_Click(object s,RoutedEventArgs e)
