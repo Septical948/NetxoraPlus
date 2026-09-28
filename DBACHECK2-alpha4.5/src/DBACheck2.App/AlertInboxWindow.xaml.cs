@@ -17,6 +17,7 @@ public partial class AlertInboxWindow:Window
     public AlertInboxWindow()
     {
         InitializeComponent();
+        InitializeDomainFilter();
         ApplyLanguage();
         Loaded+=async(_,__)=>await LoadAsync();
     }
@@ -33,6 +34,7 @@ public partial class AlertInboxWindow:Window
         DiagnoseButton.Content=En?"DIAGNOSE SELECTED":"DIAGNOSTICAR SELECCIONADO";
         CreateIncidentButton.Content=En?"CREATE INCIDENT":"CREAR INCIDENTE";
         DetailTitleText.Text=En?"PRIORITY / CORRELATION DETAIL":"DETALLE DE PRIORIDAD / CORRELACIÓN";
+        RefreshDomainFilterLabels();
         ExpandDetailButton.Content=En?"EXPAND":"EXPANDIR";
         DetailText.Text=En
             ?"Alert Inbox loads monitoring alerts first. Database collectors run only when you choose DIAGNOSE SELECTED."
@@ -46,8 +48,7 @@ public partial class AlertInboxWindow:Window
             SetBusy(true);
             StatusText.Text=En?"Reading configured monitoring sources...":"Leyendo fuentes de monitoreo configuradas...";
             _last=await _inbox.LoadAsync();
-            InboxGrid.ItemsSource=null;InboxGrid.ItemsSource=_last.Items;
-            UpdateCards();
+            ApplyDomainFilter();
 
             var sourceText=_last.SourceStatus.Count==0
                 ? (En?"No integration profiles configured.":"No hay perfiles de integración configurados.")
@@ -66,12 +67,65 @@ public partial class AlertInboxWindow:Window
         finally{SetBusy(false);}
     }
 
-    private void UpdateCards()
+    private void UpdateCards(IEnumerable<AlertInboxItem> items)
     {
-        P1Text.Text=_last.Items.Count(x=>x.Priority=="P1").ToString();
-        P2Text.Text=_last.Items.Count(x=>x.Priority=="P2").ToString();
-        OpenText.Text=_last.Items.Count.ToString();
-        UnmatchedText.Text=_last.Items.Count(x=>!x.ProfileMatched).ToString();
+        var list=items.ToList();
+        P1Text.Text=list.Count(x=>x.Priority=="P1").ToString();
+        P2Text.Text=list.Count(x=>x.Priority=="P2").ToString();
+        OpenText.Text=list.Count.ToString();
+        UnmatchedText.Text=list.Count(x=>!x.ProfileMatched).ToString();
+    }
+
+    private sealed class DomainFilterItem
+    {
+        public string Key { get; init; } = "ALL";
+        public string Label { get; set; } = "";
+        public override string ToString()=>Label;
+    }
+
+    private void InitializeDomainFilter()
+    {
+        DomainFilterBox.ItemsSource=new List<DomainFilterItem> {
+            new(){Key="ALL"},
+            new(){Key="DATABASE"},
+            new(){Key="OS"},
+            new(){Key="NETWORK"},
+            new(){Key="APPLICATION"},
+            new(){Key="OTHER"}
+        };
+        RefreshDomainFilterLabels();
+        DomainFilterBox.SelectedIndex=0;
+    }
+
+    private void RefreshDomainFilterLabels()
+    {
+        if(DomainFilterBox.ItemsSource is not IEnumerable<DomainFilterItem> items)return;
+        foreach(var item in items)
+            item.Label=MonitoringDomainClassifier.Display(item.Key,En);
+        DomainFilterBox.Items.Refresh();
+    }
+
+    private void DomainFilterBox_SelectionChanged(object sender,SelectionChangedEventArgs e)
+        =>ApplyDomainFilter();
+
+    private void ApplyDomainFilter()
+    {
+        if(InboxGrid is null || DomainFilterBox is null)return;
+        var key=(DomainFilterBox.SelectedItem as DomainFilterItem)?.Key??"ALL";
+        var rows=key=="ALL"
+            ? _last.Items
+            : _last.Items.Where(x=>string.Equals(x.Domain,key,StringComparison.OrdinalIgnoreCase)).ToList();
+
+        InboxGrid.ItemsSource=null;
+        InboxGrid.ItemsSource=rows;
+        UpdateCards(rows);
+
+        if(_last.Items.Count>0)
+        {
+            StatusText.Text=En
+                ?$"{rows.Count}/{_last.Items.Count} operational group(s) shown | DB {_last.Items.Count(x=>x.Domain=="DATABASE")} | OS {_last.Items.Count(x=>x.Domain=="OS")} | Network {_last.Items.Count(x=>x.Domain=="NETWORK")}"
+                :$"{rows.Count}/{_last.Items.Count} grupo(s) visibles | BD {_last.Items.Count(x=>x.Domain=="DATABASE")} | SO {_last.Items.Count(x=>x.Domain=="OS")} | Red {_last.Items.Count(x=>x.Domain=="NETWORK")}";
+        }
     }
 
     private async void RefreshButton_Click(object sender,RoutedEventArgs e)=>await LoadAsync();
@@ -100,6 +154,7 @@ Detail: {e.RawDetail}"));
             ? $@"{x.Priority} | SCORE {x.PriorityScore}/100 | {x.State}
 Host: {x.Host}
 Environment: {x.Environment}
+Domain: {MonitoringDomainClassifier.Display(x.Domain,true)}
 Category: {x.Category}
 Sources: {x.Sources}
 Alerts grouped: {x.AlertCount}
@@ -120,6 +175,7 @@ NEXT STEP
             : $@"{x.Priority} | SCORE {x.PriorityScore}/100 | {x.State}
 Host: {x.Host}
 Ambiente: {x.Environment}
+Dominio: {MonitoringDomainClassifier.Display(x.Domain,false)}
 Categoría: {x.Category}
 Fuentes: {x.Sources}
 Alertas agrupadas: {x.AlertCount}
