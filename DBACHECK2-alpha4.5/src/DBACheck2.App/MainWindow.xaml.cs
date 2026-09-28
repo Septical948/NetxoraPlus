@@ -173,6 +173,7 @@ public partial class MainWindow : Window
 
     private async void QuickButton_Click(object sender,RoutedEventArgs e)
     {
+        if(!await EnsureEntitlementAsync(ProductEntitlement.QuickCheck))return;
         if(!ValidateTarget()) return;
         if(_activeEngine!=DatabaseEngine.SqlServer && (_activeProfile is null || _activeProfile.Engine!=_activeEngine)){StatusText.Text=LocalizationService.Current==AppLanguage.En?"Activate a profile for the selected engine first.":"Primero activá un perfil para el motor seleccionado.";return;} ShowQuickCheck(); var sw=Stopwatch.StartNew();
         try {
@@ -208,15 +209,28 @@ public partial class MainWindow : Window
 
     private bool IsSql=>_activeEngine==DatabaseEngine.SqlServer;
     private IDatabaseProvider ActiveProvider()=>DatabaseProviderFactory.Create(_activeProfile??new ServerProfile{Engine=DatabaseEngine.SqlServer,Host=ServerBox.Text.Trim(),TrustCertificate=TrustCertBox.IsChecked==true});
-    private void OpenEngine(string module,string title,Func<Window> sql){if(!ValidateTarget())return;if(IsSql)HostAnalyzer(sql());else HostAnalyzer(new EngineAnalyzerWindow(ActiveProvider(),module,title));}
-    private void IncidentButton_Click(object sender,RoutedEventArgs e)=>OpenEngine("transactions",IncidentButton.Content.ToString()!,()=>new TransactionAnalyzerWindow(Service(),Compat()));
-    private void BlockingButton_Click(object sender,RoutedEventArgs e)=>OpenEngine("blocking",BlockingButton.Content.ToString()!,()=>new BlockingAnalyzerWindow(Service(),Compat()));
-    private void TempDbButton_Click(object sender,RoutedEventArgs e)=>OpenEngine("temp",TempDbButton.Content.ToString()!,()=>new TempDbAnalyzerWindow(Service()));
-    private void LogButton_Click(object sender,RoutedEventArgs e)=>OpenEngine("log",LogButton.Content.ToString()!,()=>new LogAnalyzerWindow(Service()));
-    private void BackupJobsButton_Click(object sender,RoutedEventArgs e)=>OpenEngine("backup",BackupJobsButton.Content.ToString()!,()=>new BackupJobsAnalyzerWindow(Service()));
-    private void AlwaysOnButton_Click(object sender,RoutedEventArgs e)=>OpenEngine("ha",AlwaysOnButton.Content.ToString()!,()=>new AlwaysOnAnalyzerWindow(Service()));
-    private void PerformanceButton_Click(object sender,RoutedEventArgs e)=>OpenEngine("performance",PerformanceButton.Content.ToString()!,()=>new PerformanceAnalyzerWindow(Service(),Compat()));
-    private void AssessmentButton_Click(object sender,RoutedEventArgs e)=>HostAnalyzer(new AssessmentWindow());
+
+    private async Task OpenEngineAsync(string module,string title,Func<Window> sql)
+    {
+        if(!await EnsureEntitlementAsync(ProductEntitlement.Diagnostics))return;
+        if(!ValidateTarget())return;
+        if(IsSql)HostAnalyzer(sql());
+        else HostAnalyzer(new EngineAnalyzerWindow(ActiveProvider(),module,title));
+    }
+
+    private async void IncidentButton_Click(object sender,RoutedEventArgs e)=>await OpenEngineAsync("transactions",IncidentButton.Content.ToString()!,()=>new TransactionAnalyzerWindow(Service(),Compat()));
+    private async void BlockingButton_Click(object sender,RoutedEventArgs e)=>await OpenEngineAsync("blocking",BlockingButton.Content.ToString()!,()=>new BlockingAnalyzerWindow(Service(),Compat()));
+    private async void TempDbButton_Click(object sender,RoutedEventArgs e)=>await OpenEngineAsync("temp",TempDbButton.Content.ToString()!,()=>new TempDbAnalyzerWindow(Service()));
+    private async void LogButton_Click(object sender,RoutedEventArgs e)=>await OpenEngineAsync("log",LogButton.Content.ToString()!,()=>new LogAnalyzerWindow(Service()));
+    private async void BackupJobsButton_Click(object sender,RoutedEventArgs e)=>await OpenEngineAsync("backup",BackupJobsButton.Content.ToString()!,()=>new BackupJobsAnalyzerWindow(Service()));
+    private async void AlwaysOnButton_Click(object sender,RoutedEventArgs e)=>await OpenEngineAsync("ha",AlwaysOnButton.Content.ToString()!,()=>new AlwaysOnAnalyzerWindow(Service()));
+    private async void PerformanceButton_Click(object sender,RoutedEventArgs e)=>await OpenEngineAsync("performance",PerformanceButton.Content.ToString()!,()=>new PerformanceAnalyzerWindow(Service(),Compat()));
+
+    private async void AssessmentButton_Click(object sender,RoutedEventArgs e)
+    {
+        if(!await EnsureEntitlementAsync(ProductEntitlement.FullAssessment))return;
+        HostAnalyzer(new AssessmentWindow());
+    }
     private async void IntegrationsButton_Click(object sender,RoutedEventArgs e)
     {
         if(!await EnsureEntitlementAsync(ProductEntitlement.MonitoringIntegrations))return;
@@ -229,7 +243,11 @@ public partial class MainWindow : Window
         HostAnalyzer(new AlertInboxWindow());
     }
 
-    private void HistoryButton_Click(object sender,RoutedEventArgs e){HostAnalyzer(new IncidentHistoryWindow(new IncidentHistoryService()));}
+    private async void HistoryButton_Click(object sender,RoutedEventArgs e)
+    {
+        if(!await EnsureEntitlementAsync(ProductEntitlement.IncidentHistory))return;
+        HostAnalyzer(new IncidentHistoryWindow(new IncidentHistoryService()));
+    }
 
     private async void OperationsButton_Click(object sender,RoutedEventArgs e)
     {
