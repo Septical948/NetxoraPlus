@@ -39,13 +39,14 @@
  </Border>
 
  <Grid Grid.Row="2" Margin="0,0,0,10">
-  <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+  <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
   <Button x:Name="SaveButton" Content="SAVE" MinWidth="100" Padding="15,7" Click="Save_Click"/>
   <Button Grid.Column="1" x:Name="TestButton" Content="TEST API" MinWidth="110" Padding="15,7" Margin="8,0,0,0" Click="Test_Click"/>
   <Button Grid.Column="2" x:Name="LoadProblemsButton" Content="LOAD OPEN PROBLEMS" MinWidth="160" Padding="15,7" Margin="8,0,0,0" Click="LoadProblems_Click"/>
   <Button Grid.Column="3" x:Name="DiagnoseButton" Content="DIAGNOSE SELECTED" MinWidth="155" Padding="15,7" Margin="8,0,0,0" IsEnabled="False" Click="Diagnose_Click"/>
   <Button Grid.Column="4" x:Name="CreateIncidentButton" Content="CREATE INCIDENT" MinWidth="135" Padding="15,7" Margin="8,0,0,0" IsEnabled="False" Click="CreateIncident_Click"/>
-  <TextBlock Grid.Column="5" x:Name="StatusText" Foreground="#D5DEEB" Margin="14,7,0,0" TextWrapping="Wrap"/>
+  <ComboBox Grid.Column="5" x:Name="DomainFilterBox" Width="140" Height="31" Margin="8,0,0,0" SelectionChanged="DomainFilterBox_SelectionChanged"/>
+  <TextBlock Grid.Column="6" x:Name="StatusText" Foreground="#D5DEEB" Margin="14,7,0,0" TextWrapping="Wrap"/>
  </Grid>
 
  <DataGrid x:Name="EventsGrid" Grid.Row="3" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
@@ -55,6 +56,7 @@
    <DataGridTextColumn x:Name="SeverityColumn" Header="Severity" Binding="{Binding Severity}" Width="90"/>
    <DataGridTextColumn x:Name="NativeSeverityColumn" Header="Native" Binding="{Binding NativeSeverity}" Width="100"/>
    <DataGridTextColumn x:Name="HostColumn" Header="Host" Binding="{Binding Host}" Width="180"/>
+   <DataGridTextColumn x:Name="DomainColumn" Header="Domain" Binding="{Binding Domain}" Width="105"/>
    <DataGridTextColumn x:Name="ProblemColumn" Header="Problem" Binding="{Binding Name}" Width="*"/>
    <DataGridTextColumn x:Name="TimeColumn" Header="Time" Binding="{Binding Timestamp}" Width="155"/>
    <DataGridCheckBoxColumn x:Name="AckColumn" Header="Ack" Binding="{Binding Acknowledged}" Width="55"/>
