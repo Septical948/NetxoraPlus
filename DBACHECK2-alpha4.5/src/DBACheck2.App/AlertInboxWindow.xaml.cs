@@ -12,13 +12,14 @@ public partial class AlertInboxWindow:Window
     private readonly IncidentHistoryService _history=new();
     private AlertInboxLoadResult _last=new();
     private ExternalDiagnosisResult? _lastDiagnosis;
+    private string _domainFilter="ALL";
     private bool En=>LocalizationService.Current==AppLanguage.En;
 
     public AlertInboxWindow()
     {
         InitializeComponent();
-        InitializeDomainFilter();
         ApplyLanguage();
+        UpdateDomainFilterButtons();
         Loaded+=async(_,__)=>await LoadAsync();
     }
 
@@ -34,8 +35,9 @@ public partial class AlertInboxWindow:Window
         DiagnoseButton.Content=En?"DIAGNOSE SELECTED":"DIAGNOSTICAR SELECCIONADO";
         CreateIncidentButton.Content=En?"CREATE INCIDENT":"CREAR INCIDENTE";
         DetailTitleText.Text=En?"PRIORITY / CORRELATION DETAIL":"DETALLE DE PRIORIDAD / CORRELACIÓN";
-        RefreshDomainFilterLabels();
+        FilterLabelText.Text=En?"FILTER:":"FILTRAR:";
         ExpandDetailButton.Content=En?"EXPAND":"EXPANDIR";
+        UpdateDomainFilterButtons();
         DetailText.Text=En
             ?"Alert Inbox loads monitoring alerts first. Database collectors run only when you choose DIAGNOSE SELECTED."
             :"La bandeja carga primero las alertas de monitoreo. Los collectors de base sólo se ejecutan al elegir DIAGNOSTICAR SELECCIONADO.";
@@ -76,56 +78,58 @@ public partial class AlertInboxWindow:Window
         UnmatchedText.Text=list.Count(x=>!x.ProfileMatched).ToString();
     }
 
-    private sealed class DomainFilterItem
+    private void DomainFilterButton_Click(object sender,RoutedEventArgs e)
     {
-        public string Key { get; init; } = "ALL";
-        public string Label { get; set; } = "";
-        public override string ToString()=>Label;
+        if(sender is not Button button || button.Tag is not string key)return;
+        _domainFilter=key;
+        ApplyDomainFilter();
+        UpdateDomainFilterButtons();
     }
-
-    private void InitializeDomainFilter()
-    {
-        DomainFilterBox.ItemsSource=new List<DomainFilterItem> {
-            new(){Key="ALL"},
-            new(){Key="DATABASE"},
-            new(){Key="OS"},
-            new(){Key="NETWORK"},
-            new(){Key="APPLICATION"},
-            new(){Key="OTHER"}
-        };
-        RefreshDomainFilterLabels();
-        DomainFilterBox.SelectedIndex=0;
-    }
-
-    private void RefreshDomainFilterLabels()
-    {
-        if(DomainFilterBox.ItemsSource is not IEnumerable<DomainFilterItem> items)return;
-        foreach(var item in items)
-            item.Label=MonitoringDomainClassifier.Display(item.Key,En);
-        DomainFilterBox.Items.Refresh();
-    }
-
-    private void DomainFilterBox_SelectionChanged(object sender,SelectionChangedEventArgs e)
-        =>ApplyDomainFilter();
 
     private void ApplyDomainFilter()
     {
-        if(InboxGrid is null || DomainFilterBox is null)return;
-        var key=(DomainFilterBox.SelectedItem as DomainFilterItem)?.Key??"ALL";
-        var rows=key=="ALL"
+        if(InboxGrid is null)return;
+        var rows=_domainFilter=="ALL"
             ? _last.Items
-            : _last.Items.Where(x=>string.Equals(x.Domain,key,StringComparison.OrdinalIgnoreCase)).ToList();
+            : _last.Items.Where(x=>string.Equals(x.Domain,_domainFilter,StringComparison.OrdinalIgnoreCase)).ToList();
 
         InboxGrid.ItemsSource=null;
         InboxGrid.ItemsSource=rows;
         UpdateCards(rows);
+        UpdateDomainFilterButtons();
 
         if(_last.Items.Count>0)
         {
             StatusText.Text=En
-                ?$"{rows.Count}/{_last.Items.Count} operational group(s) shown | DB {_last.Items.Count(x=>x.Domain=="DATABASE")} | OS {_last.Items.Count(x=>x.Domain=="OS")} | Network {_last.Items.Count(x=>x.Domain=="NETWORK")}"
-                :$"{rows.Count}/{_last.Items.Count} grupo(s) visibles | BD {_last.Items.Count(x=>x.Domain=="DATABASE")} | SO {_last.Items.Count(x=>x.Domain=="OS")} | Red {_last.Items.Count(x=>x.Domain=="NETWORK")}";
+                ?$"{rows.Count}/{_last.Items.Count} shown | DB {_last.Items.Count(x=>x.Domain=="DATABASE")} | OS {_last.Items.Count(x=>x.Domain=="OS")} | Network {_last.Items.Count(x=>x.Domain=="NETWORK")} | App {_last.Items.Count(x=>x.Domain=="APPLICATION")} | Other {_last.Items.Count(x=>x.Domain=="OTHER")}"
+                :$"{rows.Count}/{_last.Items.Count} visibles | BD {_last.Items.Count(x=>x.Domain=="DATABASE")} | SO {_last.Items.Count(x=>x.Domain=="OS")} | Red {_last.Items.Count(x=>x.Domain=="NETWORK")} | App {_last.Items.Count(x=>x.Domain=="APPLICATION")} | Otros {_last.Items.Count(x=>x.Domain=="OTHER")}";
         }
+    }
+
+    private void UpdateDomainFilterButtons()
+    {
+        if(FilterAllButton is null)return;
+        SetFilterButton(FilterAllButton,"ALL",En?"ALL":"TODOS",_last.Items.Count);
+        SetFilterButton(FilterDbButton,"DATABASE",En?"DB":"BD",_last.Items.Count(x=>x.Domain=="DATABASE"));
+        SetFilterButton(FilterOsButton,"OS",En?"OS":"SO",_last.Items.Count(x=>x.Domain=="OS"));
+        SetFilterButton(FilterNetworkButton,"NETWORK",En?"NETWORK":"RED",_last.Items.Count(x=>x.Domain=="NETWORK"));
+        SetFilterButton(FilterAppButton,"APPLICATION","APP",_last.Items.Count(x=>x.Domain=="APPLICATION"));
+        SetFilterButton(FilterOtherButton,"OTHER",En?"OTHER":"OTROS",_last.Items.Count(x=>x.Domain=="OTHER"));
+    }
+
+    private void SetFilterButton(Button button,string key,string label,int count)
+    {
+        button.Content=$"{label} {count}";
+        var selected=string.Equals(_domainFilter,key,StringComparison.OrdinalIgnoreCase);
+        button.Background=selected
+            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(39,59,91))
+            : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(26,41,66));
+        button.Foreground=selected
+            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(56,232,208))
+            : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(232,237,247));
+        button.BorderBrush=selected
+            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(56,232,208))
+            : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(53,80,111));
     }
 
     private async void RefreshButton_Click(object sender,RoutedEventArgs e)=>await LoadAsync();
