@@ -5,6 +5,7 @@ public enum EnterpriseMemberState { Invited, Active, Suspended }
 public enum EnterpriseRequestState { Draft, Requested, InProgress, Delivered, Rejected }
 public enum SharedOperationState { New, Assigned, Investigating, Waiting, Resolved }
 public enum EnterpriseSsoMode { Disabled, Oidc, SamlGateway }
+public enum EnterpriseLicenseState { Development, Trial, Active, Suspended, Expired }
 
 public sealed class EnterpriseOrganization
 {
@@ -12,6 +13,10 @@ public sealed class EnterpriseOrganization
     public string Name { get; set; } = "DBACHECK2 Enterprise Workspace";
     public string Domain { get; set; } = "";
     public int SeatLimit { get; set; } = 10;
+    public EnterpriseLicenseState LicenseState { get; set; } = EnterpriseLicenseState.Development;
+    public bool SeatLimitManagedByBilling { get; set; }
+    public string ContractReference { get; set; } = "";
+    public DateTime? LicenseExpiresAt { get; set; }
     public EnterpriseSsoMode SsoMode { get; set; } = EnterpriseSsoMode.Disabled;
     public string SsoIssuer { get; set; } = "";
     public string SsoClientId { get; set; } = "";
