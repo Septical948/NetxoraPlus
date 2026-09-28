@@ -94,6 +94,12 @@ app.MapPut("/v1/organizations/{orgId}/sla",async(string orgId,List<EnterpriseSla
     return Results.Ok(body);
 });
 
+app.MapPut("/v1/internal/organizations/{orgId}/license",async(string orgId,EnterpriseLicenseUpdateRequest body,HttpRequest request,ControlPlaneStore store,ControlPlaneAuth auth)=>{
+    if(!auth.ValidateService(request))return Results.Unauthorized();
+    try{return Results.Ok(await store.ApplyLicenseAsync(orgId,body,"CONTROL SERVICE"));}
+    catch(InvalidOperationException ex){return Results.BadRequest(new{error=ex.Message});}
+});
+
 app.MapGet("/v1/organizations/{orgId}/audit",async(string orgId,int? limit,HttpRequest request,ControlPlaneStore store,ControlPlaneAuth auth)=>{
     if(!await auth.ValidateOrganizationAsync(request,orgId))return Results.Unauthorized();
     return Results.Ok(await store.GetAuditAsync(orgId,limit??500));
