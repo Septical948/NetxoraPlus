@@ -13,6 +13,7 @@ namespace DBACheck2.App;
 
 public partial class MainWindow : Window
 {
+    private readonly FeatureGateService _featureGate=new();
     private Window? _hostedAnalyzer;
     private DatabaseEngine _activeEngine=DatabaseEngine.SqlServer;
     private string _activeProfileName="Manual";
@@ -44,8 +45,45 @@ public partial class MainWindow : Window
             UiLocalizationService.Apply(ModuleHost);
         };
         window.SubscriptionRequested+=()=>HostAnalyzer(new SubscriptionWindow());
-        window.EnterpriseRequested+=()=>HostAnalyzer(new EnterpriseWindow());
+        window.EnterpriseRequested+=()=>_ = OpenEnterpriseCenterAsync();
         HostAnalyzer(window);
+    }
+
+    private async Task OpenEnterpriseCenterAsync()
+    {
+        if(!await EnsureEntitlementAsync(ProductEntitlement.TeamLicensing))return;
+        HostAnalyzer(new EnterpriseWindow());
+    }
+
+    private async Task<bool> EnsureEntitlementAsync(ProductEntitlement entitlement)
+    {
+        try
+        {
+            var gate=await _featureGate.CheckAsync(entitlement);
+            if(gate.Allowed)return true;
+
+            var en=LocalizationService.Current==AppLanguage.En;
+            var required=gate.RequiredPlan;
+            var result=MessageBox.Show(
+                en
+                    ? $"{gate.Message}.\n\nOpen Subscription to review or upgrade your plan?"
+                    : $"{gate.Message}.\n\n¿Abrir Suscripción para revisar o actualizar tu plan?",
+                en?"DBACHECK2 Subscription":"Suscripción DBACHECK2",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Information);
+
+            if(result==MessageBoxResult.Yes)HostAnalyzer(new SubscriptionWindow());
+            return false;
+        }
+        catch(Exception ex)
+        {
+            MessageBox.Show(
+                (LocalizationService.Current==AppLanguage.En?"Could not validate subscription: ":"No se pudo validar la suscripción: ")+ex.Message,
+                "DBACHECK2",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return false;
+        }
     }
 
     private void SupportButton_Click(object sender,RoutedEventArgs e)=>HostAnalyzer(new SupportWindow());
@@ -179,10 +217,26 @@ public partial class MainWindow : Window
     private void AlwaysOnButton_Click(object sender,RoutedEventArgs e)=>OpenEngine("ha",AlwaysOnButton.Content.ToString()!,()=>new AlwaysOnAnalyzerWindow(Service()));
     private void PerformanceButton_Click(object sender,RoutedEventArgs e)=>OpenEngine("performance",PerformanceButton.Content.ToString()!,()=>new PerformanceAnalyzerWindow(Service(),Compat()));
     private void AssessmentButton_Click(object sender,RoutedEventArgs e)=>HostAnalyzer(new AssessmentWindow());
-    private void IntegrationsButton_Click(object sender,RoutedEventArgs e)=>HostAnalyzer(new IntegrationWindow());
-    private void AlertInboxButton_Click(object sender,RoutedEventArgs e)=>HostAnalyzer(new AlertInboxWindow());
+    private async void IntegrationsButton_Click(object sender,RoutedEventArgs e)
+    {
+        if(!await EnsureEntitlementAsync(ProductEntitlement.MonitoringIntegrations))return;
+        HostAnalyzer(new IntegrationWindow());
+    }
+
+    private async void AlertInboxButton_Click(object sender,RoutedEventArgs e)
+    {
+        if(!await EnsureEntitlementAsync(ProductEntitlement.AlertInbox))return;
+        HostAnalyzer(new AlertInboxWindow());
+    }
+
     private void HistoryButton_Click(object sender,RoutedEventArgs e){HostAnalyzer(new IncidentHistoryWindow(new IncidentHistoryService()));}
-    private void OperationsButton_Click(object sender,RoutedEventArgs e){if(!ValidateTarget())return;HostAnalyzer(new IncidentOperationsWindow(Service()));}
+
+    private async void OperationsButton_Click(object sender,RoutedEventArgs e)
+    {
+        if(!await EnsureEntitlementAsync(ProductEntitlement.IncidentOperations))return;
+        if(!ValidateTarget())return;
+        HostAnalyzer(new IncidentOperationsWindow(Service()));
+    }
     private void AssistantButton_Click(object sender,RoutedEventArgs e)
     {
         var window=new AssistantProfilesWindow(ServerBox.Text.Trim());
