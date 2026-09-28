@@ -108,6 +108,23 @@ public sealed class MemberCreateRequest
     public bool SeatAssigned { get; set; } = true;
 }
 
+public sealed class EnterpriseLicenseUpdateRequest
+{
+    public EnterpriseLicenseState State { get; set; } = EnterpriseLicenseState.Active;
+    public int SeatLimit { get; set; } = 1;
+    public string ContractReference { get; set; } = "";
+    public DateTime? ExpiresAt { get; set; }
+    public bool ManagedByBilling { get; set; } = true;
+}
+
+public sealed class MemberUpdateRequest
+{
+    public string DisplayName { get; set; } = "";
+    public EnterpriseRole Role { get; set; } = EnterpriseRole.Dba;
+    public EnterpriseMemberState State { get; set; } = EnterpriseMemberState.Active;
+    public bool SeatAssigned { get; set; } = true;
+}
+
 public sealed class ActorContext
 {
     public string Actor { get; set; } = "CONTROL PLANE";
