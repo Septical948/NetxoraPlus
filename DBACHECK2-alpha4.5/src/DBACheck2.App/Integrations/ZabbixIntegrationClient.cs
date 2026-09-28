@@ -100,6 +100,7 @@ public sealed class ZabbixIntegrationClient:IIntegrationProvider
                 Tags=tags,
                 RawDetail=p.TryGetProperty("opdata",out var op)?op.GetString()??"":""
             };
+            ev.Domain=MonitoringDomainClassifier.Classify(ev);
             ev.CorrelationHint=IntegrationCorrelationService.Hint(ev);
             result.Add(ev);
         }
