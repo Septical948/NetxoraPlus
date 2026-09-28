@@ -23,6 +23,7 @@ public sealed class EnterpriseWorkspaceService
     public string DatabasePath=>_dbPath;
     public bool EnterpriseBackendConfigured=>_controlPlane.Configured;
     public string EnterpriseBackend=>_controlPlane.Configured?_controlPlane.Api:_enterpriseApi;
+    public string EnterpriseOrganizationId=>_controlPlane.Configured?_controlPlane.OrganizationId:"";
     public string EnterpriseMode=>_controlPlane.Configured?"CONTROL PLANE":"LOCAL BETA";
 
     private SqliteConnection Open()=>new($"Data Source={_dbPath}");
