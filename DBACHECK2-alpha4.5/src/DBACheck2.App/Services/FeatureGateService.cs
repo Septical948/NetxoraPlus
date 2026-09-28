@@ -23,12 +23,17 @@ public sealed class FeatureGateService
             return new(true,snapshot,entitlement,SubscriptionPlan.Standard,"Development license");
 
         var required=RequiredPlan(entitlement);
-        var active=snapshot.State is SubscriptionState.Active or SubscriptionState.Trial;
 
-        if(active && PlanCatalog.Includes(snapshot.Plan,entitlement))
-            return new(true,snapshot,entitlement,required,$"{snapshot.Plan} · {snapshot.State}");
+        if(_subscriptions.HasEntitlement(snapshot,entitlement))
+        {
+            var access=snapshot.State==SubscriptionState.PastDue && snapshot.AccessUntil.HasValue
+                ? $" · grace until {snapshot.AccessUntil.Value.ToLocalTime():yyyy-MM-dd}"
+                : "";
+            return new(true,snapshot,entitlement,required,$"{snapshot.Plan} · {snapshot.State}{access}");
+        }
 
-        var reason=!active
+        var planIncludes=PlanCatalog.Includes(snapshot.Plan,entitlement);
+        var reason=planIncludes
             ? $"Subscription state: {snapshot.State}"
             : $"Requires DBACHECK2 {required}";
 
