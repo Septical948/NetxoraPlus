@@ -10,6 +10,7 @@ public sealed class AlertInboxItem
     public string Host { get; set; } = "";
     public string Environment { get; set; } = "UNKNOWN";
     public IntegrationCategory Category { get; set; } = IntegrationCategory.General;
+    public string Domain { get; set; } = "OTHER";
     public string Sources { get; set; } = "";
     public int AlertCount { get; set; }
     public DateTime FirstSeen { get; set; }
