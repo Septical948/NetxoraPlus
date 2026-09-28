@@ -243,3 +243,99 @@ On `customer.subscription.updated`, the Billing API maps the actual Stripe subsc
 ## Paid-through access
 
 `invoice.paid` updates the server-side `AccessUntil` timestamp. This is separate from the Stripe subscription status and will be used by the future entitlement layer for renewals and a short PastDue grace period.
+
+
+## Installation authentication
+
+Billing endpoints are not trusted solely by `installation_id`.
+
+The Windows client creates a random installation secret and stores it protected with Windows DPAPI under the current Windows user. Requests include:
+
+```text
+X-DBACHECK-Installation-Secret: <installation secret>
+```
+
+The Billing API stores only a SHA-256 hash of this secret.
+
+This protects subscription status, Checkout creation and Customer Portal creation from simple installation-ID spoofing.
+
+The Stripe secret key is still server-only.
+
+## Offline / payment grace behavior
+
+The desktop client keeps the last server-validated subscription snapshot for operational continuity.
+
+Default grace period:
+
+```text
+DBACHECK2_BILLING_GRACE_DAYS=2
+```
+
+Rules:
+
+- Development license: unrestricted during Beta
+- Active / Trial: cached paid features remain available only until `LastValidatedAt + grace days`
+- PastDue: access may continue until the last paid `AccessUntil + grace days`
+- Canceled: access may continue only until the already-paid `AccessUntil`
+- Expired / Paused / Unknown: no paid entitlements
+
+A failed network refresh does not rewrite `LastValidatedAt`, so disconnecting a workstation cannot extend paid access indefinitely.
+
+## Entitlement enforcement
+
+Commercial feature gates are now centralized.
+
+Standard:
+- Quick Check
+- diagnostics
+- Full Assessment
+- Full Assessment export
+- Incident History
+
+Plus:
+- Standard features
+- monitoring integrations
+- Alert Inbox
+- correlation / targeted diagnosis
+- Incident Operations
+
+Enterprise:
+- Plus features
+- organization / seats
+- Enterprise workspace capabilities according to the product catalog
+
+Beta development licenses bypass the gates so QA remains unrestricted.
+
+## Webhook lifecycle
+
+The Billing API currently processes:
+
+- `checkout.session.completed`
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+- `customer.subscription.paused`
+- `customer.subscription.resumed`
+- `invoice.paid`
+- `invoice.payment_failed`
+- `invoice.payment_action_required`
+
+Webhook signature validation happens before processing.
+
+Event handling uses a processing table with:
+
+```text
+PROCESSING
+PROCESSED
+FAILED
+```
+
+A failed event is not permanently marked as processed and can therefore be retried by Stripe.
+
+Plan/cycle is reconciled from the Stripe Price ID when available, so changes made through Customer Portal can be reflected back into DBACHECK2.
+
+## Checkout idempotency
+
+The Windows client sends a unique `request_id` for Checkout creation.
+
+The Billing API converts it to a Stripe idempotency key tied to the installation, preventing the same request from creating duplicate Checkout Sessions if the HTTP request is retried.
