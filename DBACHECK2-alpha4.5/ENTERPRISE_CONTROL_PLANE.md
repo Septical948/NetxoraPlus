@@ -160,3 +160,34 @@ The Control Plane must not allow a customer to permanently increase a contracted
 10. add API-key rotation and revocation
 11. migrate central persistence from SQLite
 12. add backups, HA, telemetry and rate limiting
+
+
+## Internal license provisioning
+
+The Control Plane now supports a server-to-server license update endpoint:
+
+- PUT /v1/internal/organizations/{orgId}/license
+
+It requires the server-only header X-DBACHECK-Service-Token. Configure the Control Plane host with:
+
+    DBACHECK2_CONTROL_PLANE_SERVICE_TOKEN=<at least 32 random characters>
+
+Example payload:
+
+    {
+      "state": 2,
+      "seatLimit": 25,
+      "contractReference": "ENT-2026-001",
+      "expiresAt": "2027-09-28T00:00:00Z",
+      "managedByBilling": true
+    }
+
+When managedByBilling is true, normal organization updates from the desktop cannot increase or reduce the licensed seat limit. This creates the boundary needed for a future Billing API -> Control Plane provisioning flow.
+
+## Member lifecycle
+
+The API also supports:
+
+- PUT /v1/organizations/{orgId}/members/{memberId}
+
+This updates role, state and seat assignment while enforcing the organization seat limit.
