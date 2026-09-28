@@ -44,7 +44,12 @@ public sealed class AlertInboxService
             var cached=await _store.LoadAsync();
             if(cached.Items.Count>0)
             {
-                foreach(var item in cached.Items)item.State="CACHED";
+                foreach(var item in cached.Items)
+                {
+                    item.State="CACHED";
+                    foreach(var e in item.Events)e.Domain=MonitoringDomainClassifier.Classify(e);
+                    if(item.Events.Count>0)item.Domain=MonitoringDomainClassifier.Classify(item.PrimaryEvent);
+                }
                 result.Items=cached.Items;
                 result.SourceStatus.Add(cached.CapturedAt.HasValue
                     ? (En?$"LOCAL CACHE | last successful snapshot {cached.CapturedAt:yyyy-MM-dd HH:mm:ss}":$"CACHE LOCAL | última captura exitosa {cached.CapturedAt:yyyy-MM-dd HH:mm:ss}")
