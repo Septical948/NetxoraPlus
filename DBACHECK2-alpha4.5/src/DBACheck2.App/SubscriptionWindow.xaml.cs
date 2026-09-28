@@ -42,11 +42,33 @@ public partial class SubscriptionWindow:Window
             SetBusy(true);
             _snapshot=refresh?await _subscription.RefreshAsync():await _subscription.LoadAsync();
             CurrentPlanText.Text=$"DBACHECK2 {_snapshot.Plan}";
-            CurrentStatusText.Text=_snapshot.DevelopmentLicense
-                ? (En?"Development license · unrestricted during Beta 2":"Licencia de desarrollo · sin restricciones durante Beta 2")
-                : $"{_snapshot.State} · {_snapshot.Cycle}"+(_snapshot.CurrentPeriodEnd.HasValue?$" · until {_snapshot.CurrentPeriodEnd:yyyy-MM-dd}":"");
+            if(_snapshot.DevelopmentLicense)
+            {
+                CurrentStatusText.Text=En
+                    ?"Development license · unrestricted during Beta 2"
+                    :"Licencia de desarrollo · sin restricciones durante Beta 2";
+            }
+            else
+            {
+                var period=_snapshot.CurrentPeriodEnd.HasValue
+                    ? (En?$" · period ends {_snapshot.CurrentPeriodEnd.Value.ToLocalTime():yyyy-MM-dd}":$" · período finaliza {_snapshot.CurrentPeriodEnd.Value.ToLocalTime():yyyy-MM-dd}")
+                    : "";
+                var cancel=_snapshot.CancelAtPeriodEnd
+                    ? (En?" · cancellation scheduled":" · cancelación programada")
+                    : "";
+                var grace=_subscription.OfflineGraceUntil(_snapshot);
+                var offline=grace.HasValue
+                    ? (En?$" · offline access until {grace.Value:yyyy-MM-dd HH:mm}":$" · acceso offline hasta {grace.Value:yyyy-MM-dd HH:mm}")
+                    : "";
+                CurrentStatusText.Text=$"{_snapshot.State} · {_snapshot.Cycle}{period}{cancel}{offline}";
+            }
+
+            PortalButton.IsEnabled=!string.IsNullOrWhiteSpace(_snapshot.CustomerReference);
+
             BillingStatusText.Text=_subscription.BillingBackendConfigured
-                ? (En?"Billing backend configured. Checkout and customer portal are available.":"Backend de facturación configurado. Checkout y portal de cliente disponibles.")
+                ? (En
+                    ?"Billing backend configured. Subscription state is server-authoritative; the desktop keeps only a bounded offline cache."
+                    :"Backend de facturación configurado. El estado de suscripción es autoritativo en servidor; el escritorio conserva sólo una caché offline limitada.")
                 : (En
                     ?"Billing UI is ready, but no production billing backend is configured yet. No payment secret is stored in the desktop application."
                     :"La interfaz de facturación está lista, pero todavía no hay un backend de cobro productivo configurado. Ningún secreto de pago se almacena en la aplicación de escritorio.");
@@ -105,7 +127,7 @@ public partial class SubscriptionWindow:Window
     private void SetBusy(bool busy)
     {
         RefreshButton.IsEnabled=!busy;
-        PortalButton.IsEnabled=!busy;
+        PortalButton.IsEnabled=!busy && _snapshot is not null && !string.IsNullOrWhiteSpace(_snapshot.CustomerReference);
         StandardMonthlyButton.IsEnabled=!busy;
         StandardAnnualButton.IsEnabled=!busy;
         PlusMonthlyButton.IsEnabled=!busy;
