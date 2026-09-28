@@ -9,6 +9,7 @@ public sealed class EnterpriseWorkspaceService
 {
     private readonly string _dbPath;
     private readonly string _enterpriseApi;
+    private readonly EnterpriseControlPlaneClient _controlPlane=new();
 
     public EnterpriseWorkspaceService()
     {
@@ -20,8 +21,9 @@ public sealed class EnterpriseWorkspaceService
     }
 
     public string DatabasePath=>_dbPath;
-    public bool EnterpriseBackendConfigured=>Uri.TryCreate(_enterpriseApi,UriKind.Absolute,out _);
-    public string EnterpriseBackend=>_enterpriseApi;
+    public bool EnterpriseBackendConfigured=>_controlPlane.Configured;
+    public string EnterpriseBackend=>_controlPlane.Configured?_controlPlane.Api:_enterpriseApi;
+    public string EnterpriseMode=>_controlPlane.Configured?"CONTROL PLANE":"LOCAL BETA";
 
     private SqliteConnection Open()=>new($"Data Source={_dbPath}");
 
@@ -70,54 +72,68 @@ CREATE TABLE IF NOT EXISTS enterprise_audit(
     }
 
     public async Task<EnterpriseOrganization> LoadOrganizationAsync()
-        =>await LoadStateAsync<EnterpriseOrganization>("organization") ?? new();
+    {
+        if(_controlPlane.Configured)return await _controlPlane.LoadOrganizationAsync();
+        return await LoadStateAsync<EnterpriseOrganization>("organization") ?? new();
+    }
 
     public async Task SaveOrganizationAsync(EnterpriseOrganization value,string actor="LOCAL ADMIN")
     {
+        if(_controlPlane.Configured){await _controlPlane.SaveOrganizationAsync(value);return;}
         value.UpdatedAt=DateTime.Now;
         await SaveStateAsync("organization",value);
         await AddAuditAsync(actor,"ORGANIZATION_UPDATED",value.OrganizationId,$"Name={value.Name}; Domain={value.Domain}; Seats={value.SeatLimit}");
     }
 
-    public async Task<List<EnterpriseMember>> LoadMembersAsync()=>await LoadRowsAsync<EnterpriseMember>("enterprise_members","payload","updated_at DESC");
+    public async Task<List<EnterpriseMember>> LoadMembersAsync()
+        =>_controlPlane.Configured?await _controlPlane.LoadMembersAsync():await LoadRowsAsync<EnterpriseMember>("enterprise_members","payload","updated_at DESC");
     public async Task SaveMemberAsync(EnterpriseMember value,string actor="LOCAL ADMIN")
     {
+        if(_controlPlane.Configured){await _controlPlane.AddMemberAsync(value);return;}
         await SaveRowAsync("enterprise_members","member_id",value.MemberId,value);
         await AddAuditAsync(actor,"MEMBER_SAVED",value.Email,$"Role={value.Role}; State={value.State}; Seat={value.SeatAssigned}");
     }
 
     public async Task DeleteMemberAsync(string memberId,string actor="LOCAL ADMIN")
     {
+        if(_controlPlane.Configured){await _controlPlane.DeleteMemberAsync(memberId);return;}
         var members=await LoadMembersAsync();
         var member=members.FirstOrDefault(x=>x.MemberId==memberId);
         await DeleteRowAsync("enterprise_members","member_id",memberId);
         await AddAuditAsync(actor,"MEMBER_DELETED",member?.Email??memberId,"Member removed from local Enterprise workspace.");
     }
 
-    public async Task<List<EnterpriseIntegrationRequest>> LoadIntegrationRequestsAsync()=>await LoadRowsAsync<EnterpriseIntegrationRequest>("enterprise_integrations","payload","updated_at DESC");
+    public async Task<List<EnterpriseIntegrationRequest>> LoadIntegrationRequestsAsync()
+        =>_controlPlane.Configured?await _controlPlane.LoadIntegrationRequestsAsync():await LoadRowsAsync<EnterpriseIntegrationRequest>("enterprise_integrations","payload","updated_at DESC");
     public async Task SaveIntegrationRequestAsync(EnterpriseIntegrationRequest value,string actor="LOCAL ADMIN")
     {
+        if(_controlPlane.Configured){await _controlPlane.SaveIntegrationRequestAsync(value);return;}
         await SaveRowAsync("enterprise_integrations","request_id",value.RequestId,value);
         await AddAuditAsync(actor,"INTEGRATION_REQUEST_SAVED",value.Name,$"Type={value.IntegrationType}; State={value.State}");
     }
 
-    public async Task<List<SharedOperation>> LoadSharedOperationsAsync()=>await LoadRowsAsync<SharedOperation>("shared_operations","payload","updated_at DESC");
+    public async Task<List<SharedOperation>> LoadSharedOperationsAsync()
+        =>_controlPlane.Configured?await _controlPlane.LoadSharedOperationsAsync():await LoadRowsAsync<SharedOperation>("shared_operations","payload","updated_at DESC");
     public async Task SaveSharedOperationAsync(SharedOperation value,string actor="LOCAL ADMIN")
     {
+        if(_controlPlane.Configured){await _controlPlane.SaveSharedOperationAsync(value);return;}
         value.UpdatedAt=DateTime.Now;
         await SaveRowAsync("shared_operations","operation_id",value.OperationId,value);
         await AddAuditAsync(actor,"SHARED_OPERATION_SAVED",value.Host,$"{value.Priority} | {value.State} | {value.Summary}");
     }
 
-    public async Task<List<EnterpriseSlaRule>> LoadSlaAsync()=>await LoadStateAsync<List<EnterpriseSlaRule>>("sla") ?? DefaultSla();
+    public async Task<List<EnterpriseSlaRule>> LoadSlaAsync()
+        =>_controlPlane.Configured?await _controlPlane.LoadSlaAsync():await LoadStateAsync<List<EnterpriseSlaRule>>("sla") ?? DefaultSla();
     public async Task SaveSlaAsync(List<EnterpriseSlaRule> value,string actor="LOCAL ADMIN")
     {
+        if(_controlPlane.Configured){await _controlPlane.SaveSlaAsync(value);return;}
         await SaveStateAsync("sla",value);
         await AddAuditAsync(actor,"SLA_UPDATED","Enterprise SLA",string.Join("; ",value.Select(x=>$"{x.Priority}:{x.ResponseTargetMinutes}m")));
     }
 
     public async Task<List<EnterpriseAuditEvent>> LoadAuditAsync(int limit=500)
     {
+        if(_controlPlane.Configured)return await _controlPlane.LoadAuditAsync(limit);
         var list=new List<EnterpriseAuditEvent>();
         await using var cn=Open();await cn.OpenAsync();
         await using var cmd=cn.CreateCommand();
