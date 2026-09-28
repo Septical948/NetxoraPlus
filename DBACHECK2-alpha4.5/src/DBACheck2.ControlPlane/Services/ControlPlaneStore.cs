@@ -142,6 +142,15 @@ VALUES($id,$payload,$hash,$now,$now);";
 
     public async Task SaveOrganizationAsync(string organizationId,EnterpriseOrganization value,string actor)
     {
+        var current=await GetOrganizationAsync(organizationId)??throw new InvalidOperationException("Organization not found.");
+        if(current.SeatLimitManagedByBilling)
+        {
+            value.SeatLimit=current.SeatLimit;
+            value.LicenseState=current.LicenseState;
+            value.SeatLimitManagedByBilling=true;
+            value.ContractReference=current.ContractReference;
+            value.LicenseExpiresAt=current.LicenseExpiresAt;
+        }
         value.OrganizationId=organizationId;value.UpdatedAt=DateTime.UtcNow;
         await using var cn=Open();await cn.OpenAsync();
         await using var tx=await cn.BeginTransactionAsync();
@@ -156,6 +165,37 @@ VALUES($id,$payload,$hash,$now,$now);";
         }
         await AddAuditAsync(cn,(SqliteTransaction)tx,organizationId,actor,"ORGANIZATION_UPDATED",organizationId,$"Name={value.Name}; Seats={value.SeatLimit}; SSO={value.SsoMode}");
         await tx.CommitAsync();
+    }
+
+    public async Task<EnterpriseOrganization> ApplyLicenseAsync(string organizationId,EnterpriseLicenseUpdateRequest request,string actor)
+    {
+        var org=await GetOrganizationAsync(organizationId)??throw new InvalidOperationException("Organization not found.");
+        var members=await GetMembersAsync(organizationId);
+        var used=members.Count(x=>x.SeatAssigned&&x.State!=EnterpriseMemberState.Suspended);
+        if(request.SeatLimit<used)
+            throw new InvalidOperationException($"Seat limit {request.SeatLimit} is below the {used} currently assigned active seats.");
+
+        org.SeatLimit=Math.Max(1,request.SeatLimit);
+        org.LicenseState=request.State;
+        org.SeatLimitManagedByBilling=request.ManagedByBilling;
+        org.ContractReference=request.ContractReference.Trim();
+        org.LicenseExpiresAt=request.ExpiresAt;
+        org.UpdatedAt=DateTime.UtcNow;
+
+        await using var cn=Open();await cn.OpenAsync();
+        await using var tx=await cn.BeginTransactionAsync();
+        await using(var cmd=cn.CreateCommand())
+        {
+            cmd.Transaction=(SqliteTransaction)tx;
+            cmd.CommandText="UPDATE organizations SET payload=$payload,updated_at=$now WHERE organization_id=$id;";
+            cmd.Parameters.AddWithValue("$id",organizationId);
+            cmd.Parameters.AddWithValue("$payload",JsonSerializer.Serialize(org));
+            cmd.Parameters.AddWithValue("$now",DateTime.UtcNow.ToString("O"));
+            await cmd.ExecuteNonQueryAsync();
+        }
+        await AddAuditAsync(cn,(SqliteTransaction)tx,organizationId,actor,"LICENSE_UPDATED",organizationId,$"State={org.LicenseState}; Seats={org.SeatLimit}; Managed={org.SeatLimitManagedByBilling}; Contract={org.ContractReference}");
+        await tx.CommitAsync();
+        return org;
     }
 
     public async Task<List<EnterpriseMember>> GetMembersAsync(string organizationId)
@@ -182,6 +222,31 @@ VALUES($id,$payload,$hash,$now,$now);";
         await using var tx=await cn.BeginTransactionAsync();
         await SaveMemberAsync(cn,(SqliteTransaction)tx,organizationId,member);
         await AddAuditAsync(cn,(SqliteTransaction)tx,organizationId,actor,"MEMBER_ADDED",member.Email,$"Role={member.Role}; Seat={member.SeatAssigned}");
+        await tx.CommitAsync();
+        return member;
+    }
+
+    public async Task<EnterpriseMember> UpdateMemberAsync(string organizationId,string memberId,MemberUpdateRequest request,string actor)
+    {
+        var org=await GetOrganizationAsync(organizationId)??throw new InvalidOperationException("Organization not found.");
+        var members=await GetMembersAsync(organizationId);
+        var member=members.FirstOrDefault(x=>x.MemberId==memberId)??throw new InvalidOperationException("Member not found.");
+
+        var currentlyConsumes=member.SeatAssigned&&member.State!=EnterpriseMemberState.Suspended;
+        var willConsume=request.SeatAssigned&&request.State!=EnterpriseMemberState.Suspended;
+        var otherUsed=members.Count(x=>x.MemberId!=memberId&&x.SeatAssigned&&x.State!=EnterpriseMemberState.Suspended);
+        if(willConsume && otherUsed>=org.SeatLimit)
+            throw new InvalidOperationException("Enterprise seat limit reached.");
+
+        member.DisplayName=request.DisplayName.Trim();
+        member.Role=request.Role;
+        member.State=request.State;
+        member.SeatAssigned=request.SeatAssigned;
+
+        await using var cn=Open();await cn.OpenAsync();
+        await using var tx=await cn.BeginTransactionAsync();
+        await SaveMemberAsync(cn,(SqliteTransaction)tx,organizationId,member);
+        await AddAuditAsync(cn,(SqliteTransaction)tx,organizationId,actor,"MEMBER_UPDATED",member.Email,$"Role={member.Role}; State={member.State}; Seat={member.SeatAssigned}; ConsumedBefore={currentlyConsumes}; ConsumedAfter={willConsume}");
         await tx.CommitAsync();
         return member;
     }
