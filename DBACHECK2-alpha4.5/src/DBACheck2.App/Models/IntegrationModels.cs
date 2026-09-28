@@ -29,4 +29,5 @@ public sealed class IntegrationEvent
     public string Tags { get; set; } = "";
     public string RawDetail { get; set; } = "";
     public string CorrelationHint { get; set; } = "";
+    public string Domain { get; set; } = "OTHER";
 }
