@@ -29,12 +29,25 @@
  </UniformGrid>
 
  <Grid Grid.Row="2" Margin="0,0,0,10">
-  <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-  <Button x:Name="RefreshButton" Content="REFRESH ALL MONITORS" Padding="15,7" MinWidth="175" Click="RefreshButton_Click"/>
-  <Button Grid.Column="1" x:Name="DiagnoseButton" Content="DIAGNOSE SELECTED" Padding="15,7" MinWidth="155" Margin="8,0,0,0" IsEnabled="False" Click="DiagnoseButton_Click"/>
-  <Button Grid.Column="2" x:Name="CreateIncidentButton" Content="CREATE INCIDENT" Padding="15,7" MinWidth="135" Margin="8,0,0,0" IsEnabled="False" Click="CreateIncidentButton_Click"/>
-  <ComboBox Grid.Column="3" x:Name="DomainFilterBox" Width="140" Height="31" Margin="8,0,0,0" SelectionChanged="DomainFilterBox_SelectionChanged"/>
-  <TextBlock Grid.Column="4" x:Name="StatusText" Foreground="#D5DEEB" Margin="14,7,0,0" TextWrapping="Wrap"/>
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+
+  <Grid>
+   <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+   <Button x:Name="RefreshButton" Content="REFRESH ALL MONITORS" Padding="15,7" MinWidth="175" Click="RefreshButton_Click"/>
+   <Button Grid.Column="1" x:Name="DiagnoseButton" Content="DIAGNOSE SELECTED" Padding="15,7" MinWidth="155" Margin="8,0,0,0" IsEnabled="False" Click="DiagnoseButton_Click"/>
+   <Button Grid.Column="2" x:Name="CreateIncidentButton" Content="CREATE INCIDENT" Padding="15,7" MinWidth="135" Margin="8,0,0,0" IsEnabled="False" Click="CreateIncidentButton_Click"/>
+   <TextBlock Grid.Column="3" x:Name="StatusText" Foreground="#D5DEEB" Margin="14,7,0,0" TextWrapping="Wrap"/>
+  </Grid>
+
+  <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
+   <TextBlock x:Name="FilterLabelText" Text="FILTER:" Foreground="#8F9BB3" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,8,0"/>
+   <Button x:Name="FilterAllButton" Tag="ALL" Content="ALL" Padding="12,5" MinWidth="70" Click="DomainFilterButton_Click"/>
+   <Button x:Name="FilterDbButton" Tag="DATABASE" Content="DB" Padding="12,5" MinWidth="70" Margin="6,0,0,0" Click="DomainFilterButton_Click"/>
+   <Button x:Name="FilterOsButton" Tag="OS" Content="OS" Padding="12,5" MinWidth="70" Margin="6,0,0,0" Click="DomainFilterButton_Click"/>
+   <Button x:Name="FilterNetworkButton" Tag="NETWORK" Content="NETWORK" Padding="12,5" MinWidth="95" Margin="6,0,0,0" Click="DomainFilterButton_Click"/>
+   <Button x:Name="FilterAppButton" Tag="APPLICATION" Content="APP" Padding="12,5" MinWidth="75" Margin="6,0,0,0" Click="DomainFilterButton_Click"/>
+   <Button x:Name="FilterOtherButton" Tag="OTHER" Content="OTHER" Padding="12,5" MinWidth="80" Margin="6,0,0,0" Click="DomainFilterButton_Click"/>
+  </StackPanel>
  </Grid>
 
  <DataGrid x:Name="InboxGrid" Grid.Row="3" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
