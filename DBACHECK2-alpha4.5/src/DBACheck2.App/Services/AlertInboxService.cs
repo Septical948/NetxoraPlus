@@ -25,6 +25,7 @@ public sealed class AlertInboxService
                 var rows=await provider.GetOpenEventsAsync(250);
                 foreach(var e in rows)
                 {
+                    e.Domain=MonitoringDomainClassifier.Classify(e);
                     e.CorrelationHint=IntegrationCorrelationService.Hint(e);
                     events.Add(e);
                 }
@@ -78,6 +79,7 @@ public sealed class AlertInboxService
                 Host=primary.Host,
                 Environment=environment,
                 Category=category,
+                Domain=primary.Domain,
                 Sources=sources,
                 AlertCount=rows.Count,
                 FirstSeen=first,
