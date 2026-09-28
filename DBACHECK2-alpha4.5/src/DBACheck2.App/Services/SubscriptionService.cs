@@ -61,17 +61,32 @@ public sealed class SubscriptionService
         var local=await LoadAsync();
         if(!BillingBackendConfigured)return local;
 
-        using var request=new HttpRequestMessage(HttpMethod.Get,$"{_billingApi}/v1/subscription/status?installation_id={Uri.EscapeDataString(local.InstallationId)}");
-        AddInstallationAuth(request);
-        using var response=await _http.SendAsync(request);
-        response.EnsureSuccessStatusCode();
-        var remote=await response.Content.ReadFromJsonAsync<SubscriptionSnapshot>()
-            ?? throw new InvalidOperationException("Billing API returned an empty subscription status.");
-        if(string.IsNullOrWhiteSpace(remote.InstallationId))remote.InstallationId=local.InstallationId;
-        remote.DevelopmentLicense=false;
-        remote.LastValidatedAt=DateTime.Now;
-        await SaveAsync(remote);
-        return remote;
+        try
+        {
+            using var request=new HttpRequestMessage(HttpMethod.Get,$"{_billingApi}/v1/subscription/status?installation_id={Uri.EscapeDataString(local.InstallationId)}");
+            AddInstallationAuth(request);
+            using var response=await _http.SendAsync(request);
+
+            if(response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+                throw new InvalidOperationException("This installation could not be authenticated by the DBACHECK2 Billing API.");
+
+            response.EnsureSuccessStatusCode();
+            var remote=await response.Content.ReadFromJsonAsync<SubscriptionSnapshot>()
+                ?? throw new InvalidOperationException("Billing API returned an empty subscription status.");
+
+            if(string.IsNullOrWhiteSpace(remote.InstallationId))remote.InstallationId=local.InstallationId;
+            remote.DevelopmentLicense=false;
+            remote.LastValidatedAt=DateTime.Now;
+            await SaveAsync(remote);
+            return remote;
+        }
+        catch(InvalidOperationException){throw;}
+        catch(Exception ex) when(ex is HttpRequestException or TaskCanceledException)
+        {
+            // Keep the last server-validated license during the bounded offline grace period.
+            // LastValidatedAt is deliberately NOT changed here.
+            return local;
+        }
     }
 
     public async Task<string> CreateCheckoutAsync(SubscriptionPlan plan,BillingCycle cycle)
@@ -115,15 +130,50 @@ public sealed class SubscriptionService
     {
         if(snapshot.DevelopmentLicense)return true;
 
+        var graceDays=GraceDays();
+        var now=DateTime.UtcNow;
+
+        // A cached Active/Trial license is usable only for a bounded period after the last
+        // successful server validation. This prevents an indefinitely disconnected client
+        // from retaining paid entitlements forever.
+        var validatedUntil=snapshot.LastValidatedAt==DateTime.MinValue
+            ? DateTime.MinValue
+            : snapshot.LastValidatedAt.ToUniversalTime().AddDays(graceDays);
+
+        var usable=snapshot.State is SubscriptionState.Active or SubscriptionState.Trial
+            && validatedUntil>=now;
+
+        // Past-due customers receive a short operational grace window based on the last
+        // paid service boundary, not a permanently refreshed local timestamp.
+        if(!usable && snapshot.State==SubscriptionState.PastDue && snapshot.AccessUntil.HasValue)
+            usable=snapshot.AccessUntil.Value.ToUniversalTime().AddDays(graceDays)>=now;
+
+        // A canceled subscription can continue until the paid access boundary when Stripe
+        // indicates cancel-at-period-end / the last invoice period is still valid.
+        if(!usable && snapshot.State==SubscriptionState.Canceled && snapshot.AccessUntil.HasValue)
+            usable=snapshot.AccessUntil.Value.ToUniversalTime()>=now;
+
+        return usable && PlanCatalog.Includes(snapshot.Plan,entitlement);
+    }
+
+    public DateTime? OfflineGraceUntil(SubscriptionSnapshot snapshot)
+    {
+        if(snapshot.DevelopmentLicense)return null;
+        if(snapshot.State is SubscriptionState.Active or SubscriptionState.Trial)
+            return snapshot.LastValidatedAt==DateTime.MinValue?null:snapshot.LastValidatedAt.ToUniversalTime().AddDays(GraceDays()).ToLocalTime();
+        if(snapshot.State==SubscriptionState.PastDue && snapshot.AccessUntil.HasValue)
+            return snapshot.AccessUntil.Value.ToUniversalTime().AddDays(GraceDays()).ToLocalTime();
+        if(snapshot.State==SubscriptionState.Canceled && snapshot.AccessUntil.HasValue)
+            return snapshot.AccessUntil.Value.ToLocalTime();
+        return null;
+    }
+
+    private static int GraceDays()
+    {
         var graceDays=2;
         var configured=Environment.GetEnvironmentVariable("DBACHECK2_BILLING_GRACE_DAYS");
         if(int.TryParse(configured,out var parsed) && parsed>=0 && parsed<=30)graceDays=parsed;
-
-        var usable=snapshot.State is SubscriptionState.Active or SubscriptionState.Trial;
-        if(!usable && snapshot.State==SubscriptionState.PastDue && snapshot.AccessUntil.HasValue)
-            usable=snapshot.AccessUntil.Value.ToUniversalTime().AddDays(graceDays)>=DateTime.UtcNow;
-
-        return usable && PlanCatalog.Includes(snapshot.Plan,entitlement);
+        return graceDays;
     }
 
     public static void OpenExternal(string url)=>Process.Start(new ProcessStartInfo(url){UseShellExecute=true});
