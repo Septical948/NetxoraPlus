@@ -1,0 +1,43 @@
+name: DBACHECK2 RC1 Build
+
+on:
+  push:
+    branches:
+      - dbacheck2-rc1-finalization
+    paths:
+      - 'DBACHECK2-alpha4.5/**'
+      - '.github/workflows/dbacheck2-rc1.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore desktop app
+        run: dotnet restore DBACHECK2-alpha4.5/src/DBACheck2.App/DBACheck2.App.csproj
+
+      - name: Build desktop app
+        run: dotnet build DBACHECK2-alpha4.5/src/DBACheck2.App/DBACheck2.App.csproj -c Release --no-restore
+
+      - name: Publish Windows x64 self-contained
+        run: dotnet publish DBACHECK2-alpha4.5/src/DBACheck2.App/DBACheck2.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/DBACHECK2-RC1
+
+      - name: Create RC1 ZIP
+        shell: pwsh
+        run: Compress-Archive -Path artifacts/DBACHECK2-RC1/* -DestinationPath artifacts/DBACHECK2-0.9.0-RC1-win-x64.zip -Force
+
+      - name: Upload RC1 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DBACHECK2-0.9.0-RC1-win-x64
+          path: artifacts/DBACHECK2-0.9.0-RC1-win-x64.zip
+          if-no-files-found: error
