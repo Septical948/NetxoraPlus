@@ -5,17 +5,30 @@ namespace DBACheck2.App;
 
 public partial class App : Application
 {
-    private void Application_Startup(object sender, StartupEventArgs e)
+    private async void Application_Startup(object sender, StartupEventArgs e)
     {
+        SplashWindow? splash = null;
         try
         {
+            splash = new SplashWindow();
+            splash.Show();
+            splash.Activate();
+
+            // Keep the splash visible long enough to avoid a visual flash while
+            // the application initializes services and the main WPF surface.
+            await Task.Delay(850);
+
             var window = new MainWindow();
             MainWindow = window;
             window.Show();
             window.Activate();
+
+            splash.Close();
+            splash = null;
         }
         catch (Exception ex)
         {
+            splash?.Close();
             var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Netxora", "DBACHECK2");
             Directory.CreateDirectory(dir);
             var log = Path.Combine(dir, "startup-error.log");
