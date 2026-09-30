@@ -237,6 +237,11 @@ public partial class MainWindow : Window
         HostAnalyzer(new IntegrationWindow());
     }
 
+    private void NotificationIntegrationsButton_Click(object sender,RoutedEventArgs e)
+    {
+        HostAnalyzer(new NotificationIntegrationsWindow());
+    }
+
     private async void AlertInboxButton_Click(object sender,RoutedEventArgs e)
     {
         if(!await EnsureEntitlementAsync(ProductEntitlement.AlertInbox))return;
@@ -430,7 +435,7 @@ public partial class MainWindow : Window
 
     private void HealthGrid_SelectionChanged(object sender,SelectionChangedEventArgs e){if(HealthGrid.SelectedItem is HealthItem item)DetailText.Text=$"{item.Status} | {item.Area}\n{item.Summary}\n\n{item.Detail}";}
     private void EvidenceExpandButton_Click(object sender,RoutedEventArgs e)=>DetailPanelService.Toggle(QuickListRow,QuickDetailRow,EvidenceExpandButton,125,105);
-    private void SetBusy(bool busy,string? text=null){TestButton.IsEnabled=!busy;QuickButton.IsEnabled=!busy;IncidentButton.IsEnabled=!busy;BlockingButton.IsEnabled=!busy;TempDbButton.IsEnabled=!busy;LogButton.IsEnabled=!busy;BackupJobsButton.IsEnabled=!busy;AlwaysOnButton.IsEnabled=!busy;PerformanceButton.IsEnabled=!busy;AssessmentButton.IsEnabled=!busy;IntegrationsButton.IsEnabled=!busy;AlertInboxButton.IsEnabled=!busy;HistoryButton.IsEnabled=!busy;OperationsButton.IsEnabled=!busy;AssistantButton.IsEnabled=!busy;SettingsButton.IsEnabled=!busy;SupportButton.IsEnabled=!busy;if(text!=null)StatusText.Text=text;}
+    private void SetBusy(bool busy,string? text=null){TestButton.IsEnabled=!busy;QuickButton.IsEnabled=!busy;IncidentButton.IsEnabled=!busy;BlockingButton.IsEnabled=!busy;TempDbButton.IsEnabled=!busy;LogButton.IsEnabled=!busy;BackupJobsButton.IsEnabled=!busy;AlwaysOnButton.IsEnabled=!busy;PerformanceButton.IsEnabled=!busy;AssessmentButton.IsEnabled=!busy;IntegrationsButton.IsEnabled=!busy;NotificationIntegrationsButton.IsEnabled=!busy;AlertInboxButton.IsEnabled=!busy;HistoryButton.IsEnabled=!busy;OperationsButton.IsEnabled=!busy;AssistantButton.IsEnabled=!busy;SettingsButton.IsEnabled=!busy;SupportButton.IsEnabled=!busy;if(text!=null)StatusText.Text=text;}
     private string _connectionVisualState="pending";
     private void SetConnectionState(string text,string background,string foreground)
     {

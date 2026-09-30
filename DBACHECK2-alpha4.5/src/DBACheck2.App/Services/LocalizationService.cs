@@ -13,7 +13,7 @@ public static class LocalizationService
 
     private static readonly Dictionary<string,(string Es,string En)> S=new(StringComparer.OrdinalIgnoreCase)
     {
-        ["App.Subtitle"]=("Beta 1 · Plataforma DBA Multi-Engine","Beta 1 · Multi-Engine DBA Platform"),
+        ["App.Subtitle"]=("0.9 RC1 · Plataforma DBA Multi-Engine","0.9 RC1 · Multi-Engine DBA Platform"),
         ["Connection.Engine"]=("MOTOR","ENGINE"), ["Connection.Target"]=("DESTINO / PERFIL","TARGET / PROFILE"), ["Connection.Test"]=("PROBAR CONEXIÓN","TEST CONNECTION"),
         ["Connection.Unverified"]=("NO VERIFICADA","NOT VERIFIED"), ["Connection.Trust"]=("Confiar certificado","Trust certificate"),
         ["Nav.Operation"]=("INICIO","START"), ["Nav.Diagnostics"]=("DIAGNÓSTICO","DIAGNOSTICS"), ["Nav.Assessment"]=("EVALUACIÓN","ASSESSMENT"), ["Nav.HealthAssessment"]=("Evaluación de salud","Health Assessment"), ["Nav.Integrations"]=("INTEGRACIONES","INTEGRATIONS"), ["Nav.MonitoringIntegrations"]=("Integraciones de monitoreo","Monitoring Integrations"), ["Nav.Incidents"]=("INCIDENTES","INCIDENTS"), ["Nav.Quick"]=("Chequeo rápido","Quick Check"),

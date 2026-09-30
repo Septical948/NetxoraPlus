@@ -1,0 +1,39 @@
+<Window x:Class="DBACheck2.App.NotificationIntegrationsWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="DBACHECK2 - Notification Integrations" Background="#0A0D18" Width="1120" Height="720">
+<Grid Margin="16">
+ <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+ <StackPanel Margin="0,0,0,14"><TextBlock Text="NOTIFICATION INTEGRATIONS" Foreground="#38E8D0" FontSize="24" FontWeight="Bold"/><TextBlock Text="Microsoft Teams · Slack · Discord · Incident routing P1–P4" Foreground="#B7C3D7"/></StackPanel>
+ <Border Grid.Row="1" Background="#101526" BorderBrush="#2B3150" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="180"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+   <StackPanel Margin="0,0,8,0"><TextBlock Text="PROVIDER" Foreground="#91A0B8" FontSize="10"/><ComboBox x:Name="ProviderBox"/></StackPanel>
+   <StackPanel Grid.Column="1" Margin="0,0,8,0"><TextBlock Text="NAME" Foreground="#91A0B8" FontSize="10"/><TextBox x:Name="NameBox" Text="DBA Alerts"/></StackPanel>
+   <StackPanel Grid.Column="2" Margin="0,0,8,0"><TextBlock Text="TENANT / WORKSPACE" Foreground="#91A0B8" FontSize="10"/><TextBox x:Name="WorkspaceBox"/></StackPanel>
+   <StackPanel Grid.Column="3" Margin="0,0,8,0"><TextBlock Text="CHANNEL" Foreground="#91A0B8" FontSize="10"/><TextBox x:Name="ChannelBox"/></StackPanel>
+   <Button Grid.Column="4" x:Name="ConnectButton" Content="CONNECT / CONFIGURE" Padding="15,7" VerticalAlignment="Bottom" Click="Connect_Click"/>
+  </Grid>
+ </Border>
+ <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="1.1*"/><ColumnDefinition Width="1*"/></Grid.ColumnDefinitions>
+  <Border Background="#101526" BorderBrush="#2B3150" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,8,0">
+   <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <TextBlock Text="DESTINATIONS" Foreground="#BDA7FF" FontWeight="Bold"/>
+    <DataGrid x:Name="DestinationsGrid" Grid.Row="1" Margin="0,8" AutoGenerateColumns="False" IsReadOnly="True" SelectionChanged="DestinationsGrid_SelectionChanged">
+     <DataGrid.Columns><DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="130"/><DataGridTextColumn Header="Provider" Binding="{Binding Provider}" Width="130"/><DataGridTextColumn Header="Tenant / Workspace" Binding="{Binding TenantOrWorkspaceName}" Width="*"/><DataGridTextColumn Header="Channel" Binding="{Binding ChannelName}" Width="150"/></DataGrid.Columns>
+    </DataGrid>
+    <StackPanel Grid.Row="2" Orientation="Horizontal"><Button Content="TEST NOTIFICATION" Padding="12,6" Click="Test_Click"/><Button Content="DELETE" Padding="12,6" Margin="8,0,0,0" Click="Delete_Click"/></StackPanel>
+   </Grid>
+  </Border>
+  <Border Grid.Column="1" Background="#101526" BorderBrush="#2B3150" BorderThickness="1" CornerRadius="8" Padding="12" Margin="8,0,0,0">
+   <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <TextBlock Text="ROUTING POLICY" Foreground="#BDA7FF" FontWeight="Bold"/>
+    <StackPanel Grid.Row="1" Margin="0,10,0,0"><TextBlock Text="HOST PATTERN" Foreground="#91A0B8" FontSize="10"/><TextBox x:Name="HostPatternBox" Text="*"/></StackPanel>
+    <StackPanel Grid.Row="2" Margin="0,10,0,0"><TextBlock Text="NOTIFY PRIORITY AND ABOVE" Foreground="#91A0B8" FontSize="10"/><ComboBox x:Name="PriorityBox"/></StackPanel>
+    <ListBox x:Name="RouteDestinationsBox" Grid.Row="3" Margin="0,10,0,10" SelectionMode="Multiple" DisplayMemberPath="Display"/>
+    <Button Grid.Row="4" Content="SAVE DEFAULT ROUTE" Padding="12,6" Click="SaveRoute_Click"/>
+   </Grid>
+  </Border>
+ </Grid>
+ <TextBlock x:Name="StatusText" Grid.Row="3" Foreground="#D5DEEB" Margin="2,12,0,0" TextWrapping="Wrap"/>
+</Grid>
+</Window>

@@ -105,7 +105,11 @@ public sealed class SubscriptionService
         };
         AddInstallationAuth(request);
         using var response=await _http.SendAsync(request);
-        response.EnsureSuccessStatusCode();
+        if(!response.IsSuccessStatusCode)
+        {
+            var body=await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"Billing API checkout failed ({(int)response.StatusCode} {response.ReasonPhrase}): {body}");
+        }
         var link=await response.Content.ReadFromJsonAsync<BillingLinkResponse>();
         if(string.IsNullOrWhiteSpace(link?.Url))throw new InvalidOperationException("Billing API did not return a checkout URL.");
         return link.Url;
@@ -120,7 +124,11 @@ public sealed class SubscriptionService
         };
         AddInstallationAuth(request);
         using var response=await _http.SendAsync(request);
-        response.EnsureSuccessStatusCode();
+        if(!response.IsSuccessStatusCode)
+        {
+            var body=await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"Billing API customer portal failed ({(int)response.StatusCode} {response.ReasonPhrase}): {body}");
+        }
         var link=await response.Content.ReadFromJsonAsync<BillingLinkResponse>();
         if(string.IsNullOrWhiteSpace(link?.Url))throw new InvalidOperationException("Billing API did not return a customer portal URL.");
         return link.Url;
