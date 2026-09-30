@@ -129,6 +129,7 @@
                             <Expander x:Name="IntegrationsExpander" Style="{StaticResource SectionExpander}" Header="INTEGRATIONS" IsExpanded="False" Expanded="NavExpander_Expanded">
                                 <StackPanel>
                                     <Button x:Name="IntegrationsButton" Style="{StaticResource NavButton}" Content="Monitoring Integrations" Click="IntegrationsButton_Click"/>
+                                    <Button x:Name="NotificationIntegrationsButton" Style="{StaticResource NavButton}" Content="Teams / Slack / Discord" Click="NotificationIntegrationsButton_Click"/>
                                 </StackPanel>
                             </Expander>
 
